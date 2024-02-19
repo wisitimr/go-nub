@@ -76,13 +76,13 @@ func (r productRepository) Update(ctx context.Context, payload mProduct.Product)
 	filter := bson.M{"_id": payload.Id}
 	update := bson.M{
 		"$set": bson.M{
-			"code":      payload.Code,
-			"name":      payload.Name,
-			"detail":    payload.Detail,
-			"price":     payload.Price,
-			"company":   payload.Company,
-			"updatedBy": payload.UpdatedBy,
-			"updatedAt": payload.UpdatedAt,
+			"code":        payload.Code,
+			"name":        payload.Name,
+			"description": payload.Description,
+			"price":       payload.Price,
+			"company":     payload.Company,
+			"updatedBy":   payload.UpdatedBy,
+			"updatedAt":   payload.UpdatedAt,
 		},
 	}
 	after := options.After
