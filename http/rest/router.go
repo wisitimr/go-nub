@@ -95,6 +95,7 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Post("/", h.supplierHandler.Create)
 				r.Put("/{id}", h.supplierHandler.Update)
 				r.Get("/count", h.supplierHandler.Count)
+				r.Delete("/{id}", h.supplierHandler.Delete)
 			})
 			r.Route("/customer", func(r chi.Router) {
 				r.Get("/", h.customerHandler.FindAll)
@@ -102,6 +103,7 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Post("/", h.customerHandler.Create)
 				r.Put("/{id}", h.customerHandler.Update)
 				r.Get("/count", h.customerHandler.Count)
+				r.Delete("/{id}", h.customerHandler.Delete)
 			})
 			r.Route("/product", func(r chi.Router) {
 				r.Get("/", h.productHandler.FindAll)
@@ -109,6 +111,7 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Post("/", h.productHandler.Create)
 				r.Put("/{id}", h.productHandler.Update)
 				r.Get("/count", h.productHandler.Count)
+				r.Delete("/{id}", h.productHandler.Delete)
 			})
 			r.Route("/material", func(r chi.Router) {
 				r.Get("/", h.materialHandler.FindAll)
@@ -116,6 +119,7 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Post("/", h.materialHandler.Create)
 				r.Put("/{id}", h.materialHandler.Update)
 				r.Get("/count", h.materialHandler.Count)
+				r.Delete("/{id}", h.materialHandler.Delete)
 			})
 			r.Route("/company", func(r chi.Router) {
 				r.Get("/", h.companyHandler.FindAll)
@@ -129,7 +133,6 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Post("/", h.daybookHandler.Create)
 				r.Put("/{id}", h.daybookHandler.Update)
 				r.Get("/count", h.daybookHandler.Count)
-				// r.Get("/detail", h.daybookHandler.Count)
 			})
 			r.Route("/daybook/detail", func(r chi.Router) {
 				r.Get("/", h.daybookDetailHandler.FindAll)
