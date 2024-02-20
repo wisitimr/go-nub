@@ -11,4 +11,5 @@ type SupplierRepository interface {
 	FindById(ctx context.Context, id string) (mSupplier.Supplier, error)
 	Create(ctx context.Context, payload mSupplier.Supplier) (mSupplier.Supplier, error)
 	Update(ctx context.Context, payload mSupplier.Supplier) (mSupplier.Supplier, error)
+	Delete(ctx context.Context, id string) error
 }

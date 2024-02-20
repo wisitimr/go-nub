@@ -50,6 +50,14 @@ func (s productService) FindById(ctx context.Context, id string) (mProduct.Produ
 	return res, nil
 }
 
+func (s productService) Delete(ctx context.Context, id string) error {
+	err := s.productRepo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s productService) Create(ctx context.Context, payload mProduct.Product) (mProduct.Product, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {

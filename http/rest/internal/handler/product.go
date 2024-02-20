@@ -52,6 +52,15 @@ func (h productHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	h.Respond(w, r, product, http.StatusOK)
 }
 
+func (h productHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	err := h.productService.Delete(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+	h.Respond(w, r, nil, http.StatusOK)
+}
+
 func (h productHandler) Create(w http.ResponseWriter, r *http.Request) {
 	productPayload := mProduct.Product{}
 	err := json.NewDecoder(r.Body).Decode(&productPayload)

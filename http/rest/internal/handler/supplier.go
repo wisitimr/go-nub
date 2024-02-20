@@ -52,6 +52,15 @@ func (h supplierHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	h.Respond(w, r, supplier, http.StatusOK)
 }
 
+func (h supplierHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	err := h.supplierService.Delete(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+	h.Respond(w, r, nil, http.StatusOK)
+}
+
 func (h supplierHandler) Create(w http.ResponseWriter, r *http.Request) {
 	supplierPayload := mSupplier.Supplier{}
 	err := json.NewDecoder(r.Body).Decode(&supplierPayload)

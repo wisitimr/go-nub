@@ -12,4 +12,5 @@ type ProductService interface {
 	FindById(ctx context.Context, id string) (mProduct.Product, error)
 	Create(ctx context.Context, payload mProduct.Product) (mProduct.Product, error)
 	Update(ctx context.Context, id string, payload mProduct.Product) (mProduct.Product, error)
+	Delete(ctx context.Context, id string) error
 }

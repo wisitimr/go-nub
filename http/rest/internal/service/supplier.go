@@ -50,6 +50,14 @@ func (s supplierService) FindById(ctx context.Context, id string) (mSupplier.Sup
 	return res, nil
 }
 
+func (s supplierService) Delete(ctx context.Context, id string) error {
+	err := s.supplierRepo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s supplierService) Create(ctx context.Context, payload mSupplier.Supplier) (mSupplier.Supplier, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {

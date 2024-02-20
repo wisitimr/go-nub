@@ -50,6 +50,14 @@ func (s customerService) FindById(ctx context.Context, id string) (mCustomer.Cus
 	return res, nil
 }
 
+func (s customerService) Delete(ctx context.Context, id string) error {
+	err := s.customerRepo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s customerService) Create(ctx context.Context, payload mCustomer.Customer) (mCustomer.Customer, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {

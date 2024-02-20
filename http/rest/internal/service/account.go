@@ -50,6 +50,14 @@ func (s accountService) FindById(ctx context.Context, id string) (mAccount.Accou
 	return res, nil
 }
 
+func (s accountService) Delete(ctx context.Context, id string) error {
+	err := s.accountRepo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s accountService) Create(ctx context.Context, payload mAccount.Account) (mAccount.Account, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {

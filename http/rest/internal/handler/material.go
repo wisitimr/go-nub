@@ -52,6 +52,15 @@ func (h materialHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	h.Respond(w, r, material, http.StatusOK)
 }
 
+func (h materialHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	err := h.materialService.Delete(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+	h.Respond(w, r, nil, http.StatusOK)
+}
+
 func (h materialHandler) Create(w http.ResponseWriter, r *http.Request) {
 	materialPayload := mMaterial.Material{}
 	err := json.NewDecoder(r.Body).Decode(&materialPayload)

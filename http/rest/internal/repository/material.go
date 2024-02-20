@@ -34,6 +34,18 @@ func (r materialRepository) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func (r materialRepository) Delete(ctx context.Context, id string) error {
+	doc, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = r.Collection.Material.DeleteOne(ctx, bson.M{"_id": doc})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r materialRepository) FindAll(ctx context.Context, query map[string][]string) ([]mMaterial.Material, error) {
 	materials := []mMaterial.Material{}
 	cur, err := r.Collection.Material.Find(ctx, util.QueryHandler(query))

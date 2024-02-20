@@ -52,6 +52,15 @@ func (h customerHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	h.Respond(w, r, customer, http.StatusOK)
 }
 
+func (h customerHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	err := h.customerService.Delete(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+	h.Respond(w, r, nil, http.StatusOK)
+}
+
 func (h customerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	customerPayload := mCustomer.Customer{}
 	err := json.NewDecoder(r.Body).Decode(&customerPayload)

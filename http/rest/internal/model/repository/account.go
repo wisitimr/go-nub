@@ -11,4 +11,5 @@ type AccountRepository interface {
 	FindById(ctx context.Context, id string) (mAccount.Account, error)
 	Create(ctx context.Context, payload mAccount.Account) (mAccount.Account, error)
 	Update(ctx context.Context, payload mAccount.Account) (mAccount.Account, error)
+	Delete(ctx context.Context, id string) error
 }

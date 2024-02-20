@@ -11,4 +11,5 @@ type CustomerRepository interface {
 	FindById(ctx context.Context, id string) (mCustomer.Customer, error)
 	Create(ctx context.Context, payload mCustomer.Customer) (mCustomer.Customer, error)
 	Update(ctx context.Context, payload mCustomer.Customer) (mCustomer.Customer, error)
+	Delete(ctx context.Context, id string) error
 }

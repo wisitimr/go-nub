@@ -50,6 +50,14 @@ func (s materialService) FindById(ctx context.Context, id string) (mMaterial.Mat
 	return res, nil
 }
 
+func (s materialService) Delete(ctx context.Context, id string) error {
+	err := s.materialRepo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s materialService) Create(ctx context.Context, payload mMaterial.Material) (mMaterial.Material, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {

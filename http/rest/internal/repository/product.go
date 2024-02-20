@@ -33,6 +33,18 @@ func (r productRepository) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func (r productRepository) Delete(ctx context.Context, id string) error {
+	doc, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = r.Collection.Product.DeleteOne(ctx, bson.M{"_id": doc})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r productRepository) FindAll(ctx context.Context, query map[string][]string) ([]mProduct.Product, error) {
 	products := []mProduct.Product{}
 	cur, err := r.Collection.Product.Find(ctx, util.QueryHandler(query))

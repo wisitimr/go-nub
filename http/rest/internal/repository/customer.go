@@ -34,6 +34,18 @@ func (r customerRepository) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func (r customerRepository) Delete(ctx context.Context, id string) error {
+	doc, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = r.Collection.Customer.DeleteOne(ctx, bson.M{"_id": doc})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r customerRepository) FindAll(ctx context.Context, query map[string][]string) ([]mCustomer.Customer, error) {
 	customers := []mCustomer.Customer{}
 	cur, err := r.Collection.Customer.Find(ctx, util.QueryHandler(query))

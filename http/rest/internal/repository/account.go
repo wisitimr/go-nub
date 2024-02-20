@@ -68,6 +68,18 @@ func (r accountRepository) FindById(ctx context.Context, id string) (mAccount.Ac
 	return account, nil
 }
 
+func (r accountRepository) Delete(ctx context.Context, id string) error {
+	doc, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = r.Collection.Account.DeleteOne(ctx, bson.M{"_id": doc})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r accountRepository) Create(ctx context.Context, payload mAccount.Account) (mAccount.Account, error) {
 	if _, err := r.Collection.Account.InsertOne(ctx, payload); err != nil {
 		return payload, err

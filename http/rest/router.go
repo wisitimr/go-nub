@@ -87,6 +87,7 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Post("/", h.accountHandler.Create)
 				r.Put("/{id}", h.accountHandler.Update)
 				r.Get("/count", h.accountHandler.Count)
+				r.Delete("/{id}", h.accountHandler.Delete)
 			})
 			r.Route("/supplier", func(r chi.Router) {
 				r.Get("/", h.supplierHandler.FindAll)

@@ -52,6 +52,15 @@ func (h accountHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	h.Respond(w, r, account, http.StatusOK)
 }
 
+func (h accountHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	err := h.accountService.Delete(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+	h.Respond(w, r, nil, http.StatusOK)
+}
+
 func (h accountHandler) Create(w http.ResponseWriter, r *http.Request) {
 	accountPayload := mAccount.Account{}
 	err := json.NewDecoder(r.Body).Decode(&accountPayload)

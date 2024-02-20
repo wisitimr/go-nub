@@ -38,6 +38,8 @@ func (s ResponseDto) Respond(w http.ResponseWriter, r *http.Request, data interf
 	method := strings.ToLower(r.Method)
 	if (method == "post" || method == "put") && (res.StatusCode == http.StatusOK || res.StatusCode == http.StatusCreated) {
 		res.Message = "ทำรายการสำเร็จ"
+	} else if method == "delete" {
+		res.Message = "ลบสำเร็จ"
 	}
 	w.WriteHeader(res.StatusCode)
 	json.NewEncoder(w).Encode(res)

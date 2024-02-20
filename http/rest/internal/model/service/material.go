@@ -12,4 +12,5 @@ type MaterialService interface {
 	FindById(ctx context.Context, id string) (mMaterial.Material, error)
 	Create(ctx context.Context, payload mMaterial.Material) (mMaterial.Material, error)
 	Update(ctx context.Context, id string, payload mMaterial.Material) (mMaterial.Material, error)
+	Delete(ctx context.Context, id string) error
 }
