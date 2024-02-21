@@ -117,7 +117,6 @@ func (r userRepository) FindById(ctx context.Context, id string) (mUser.UserComp
 	if err != nil {
 		return result, err
 	}
-	r.logger.Info(user)
 	result.Id = user.Id
 	result.Username = user.Username
 	result.FirstName = user.FirstName
@@ -135,7 +134,6 @@ func (r userRepository) FindById(ctx context.Context, id string) (mUser.UserComp
 			var out mUser.Company
 			// err = r.DaybookDetail.FindOne(ctx, bson.M{"_id": doc}).Decode(&out)
 			err = r.Collection.Company.FindOne(ctx, bson.M{"_id": doc}).Decode(&out)
-			r.logger.Error(doc)
 			ch <- out
 		}(ch, doc)
 	}
@@ -156,7 +154,6 @@ func (r userRepository) FindUserProfile(ctx context.Context, doc primitive.Objec
 	if err != nil {
 		return result, err
 	}
-	r.logger.Info(user)
 	result.Id = user.Id
 	result.Username = user.Username
 	result.FirstName = user.FirstName

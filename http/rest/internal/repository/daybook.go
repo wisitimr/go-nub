@@ -198,7 +198,6 @@ func (r daybookRepository) FindById(ctx context.Context, id string) (mDaybook.Da
 	if err != nil {
 		return result, err
 	}
-	r.logger.Info(daybook)
 	result.Id = daybook.Id
 	result.Number = daybook.Number
 	result.Invoice = daybook.Invoice
