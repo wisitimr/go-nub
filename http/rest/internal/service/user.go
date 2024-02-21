@@ -127,8 +127,8 @@ func (s userService) Update(ctx context.Context, id string, payload mUser.User) 
 		FirstName: res.FirstName,
 		LastName:  res.LastName,
 		Email:     res.Email,
-		// Companies: res.Companies,
-		Role: res.Role,
+		Companies: res.Companies,
+		Role:      res.Role,
 	}
 	return u, nil
 }
