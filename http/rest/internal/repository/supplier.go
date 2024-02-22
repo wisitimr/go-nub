@@ -95,7 +95,6 @@ func (r supplierRepository) Update(ctx context.Context, payload mSupplier.Suppli
 			"code":      payload.Code,
 			"name":      payload.Name,
 			"address":   payload.Address,
-			"tax":       payload.Tax,
 			"phone":     payload.Phone,
 			"contact":   payload.Contact,
 			"company":   payload.Company,

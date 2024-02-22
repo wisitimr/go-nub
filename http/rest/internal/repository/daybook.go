@@ -69,6 +69,34 @@ func (r daybookRepository) FindAll(ctx context.Context, query map[string][]strin
 			},
 		},
 		{
+			"$lookup": bson.M{
+				"from":         "suppliers",
+				"localField":   "supplier",
+				"foreignField": "_id",
+				"as":           "supplier",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$supplier",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "customers",
+				"localField":   "customer",
+				"foreignField": "_id",
+				"as":           "customer",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$customer",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
 			"$sort": bson.M{
 				"createdAt": 1,
 			},
@@ -81,108 +109,6 @@ func (r daybookRepository) FindAll(ctx context.Context, query map[string][]strin
 	}
 	if err = cur.All(ctx, &daybooks); err != nil {
 		r.logger.Error(err)
-	}
-	return daybooks, nil
-}
-
-func (r daybookRepository) FindAllDetail(ctx context.Context, query map[string][]string) ([]mDaybook.DaybookResponse, error) {
-	daybooks := []mDaybook.DaybookResponse{}
-	pipeline := []bson.M{
-		{
-			"$match": util.QueryHandler(query),
-		},
-		{
-			"$lookup": bson.M{
-				"from":         "companies",
-				"localField":   "company",
-				"foreignField": "_id",
-				"as":           "company",
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path":                       "$company",
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-		{
-			"$lookup": bson.M{
-				"from":         "partners",
-				"localField":   "partner",
-				"foreignField": "_id",
-				"as":           "partner",
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path":                       "$partner",
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-		{
-			"$lookup": bson.M{
-				// Define the details collection for the join.
-				"from": "daybook_details",
-				// Specify the variable to use in the pipeline stage.
-				"let": bson.M{
-					"daybookDetails": "$daybookDetails",
-				},
-				"pipeline": []bson.M{
-					// Select only the relevant details from the details collection.
-					// Otherwise all the details are selected.
-					{
-						"$match": bson.M{
-							"$expr": bson.M{
-								"$in": []interface{}{
-									"$_id",
-									"$$daybookDetails",
-								},
-							},
-						},
-					},
-					// Sort details by their createdAt field in asc. -1 = desc
-					{
-						"$sort": bson.M{
-							"createdAt": 1,
-						},
-					},
-					{
-						"$lookup": bson.M{
-							"from":         "accounts",
-							"localField":   "account",
-							"foreignField": "_id",
-							"as":           "account",
-						},
-					},
-					{
-						"$unwind": bson.M{
-							"path":                       "$account",
-							"preserveNullAndEmptyArrays": true,
-						},
-					},
-				},
-				// Use details as the field name to match struct field.
-				"as": "daybookDetails",
-			},
-		},
-	}
-
-	cur, err := r.Collection.Daybook.Aggregate(ctx, pipeline)
-	if err != nil {
-		r.logger.Error(err)
-	}
-	if err = cur.All(ctx, &daybooks); err != nil {
-		r.logger.Error(err)
-	}
-	for i, inv := range daybooks {
-		for _, doc := range inv.DaybookDetails {
-			switch doc.Type {
-			case "DR":
-				daybooks[i].DebitTotalAmount += doc.Amount
-			case "CR":
-				daybooks[i].CreditTotalAmount += doc.Amount
-			}
-		}
 	}
 	return daybooks, nil
 }
@@ -271,6 +197,152 @@ func (r daybookRepository) FindById(ctx context.Context, id string) (mDaybook.Da
 	}
 	result.DaybookDetails = daybookDetails
 	return result, nil
+}
+
+func (r daybookRepository) FindByIdForExcel(ctx context.Context, id string) (mDaybook.DaybookExpand, error) {
+	daybooks := []mDaybook.DaybookExpand{}
+	// result := mDaybook.DaybookResponse{}
+	doc, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return mDaybook.DaybookExpand{}, err
+	}
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{"_id": doc},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "documents",
+				"localField":   "document",
+				"foreignField": "_id",
+				"as":           "document",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$document",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "companies",
+				"localField":   "company",
+				"foreignField": "_id",
+				"as":           "company",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$company",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "suppliers",
+				"localField":   "supplier",
+				"foreignField": "_id",
+				"as":           "supplier",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$supplier",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "customers",
+				"localField":   "customer",
+				"foreignField": "_id",
+				"as":           "customer",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$customer",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				// Define the details collection for the join.
+				"from": "daybook_details",
+				// Specify the variable to use in the pipeline stage.
+				"let": bson.M{
+					"daybookDetails": "$daybookDetails",
+				},
+				"pipeline": []bson.M{
+					// Select only the relevant details from the details collection.
+					// Otherwise all the details are selected.
+					{
+						"$match": bson.M{
+							"$expr": bson.M{
+								"$in": []interface{}{
+									"$_id",
+									"$$daybookDetails",
+								},
+							},
+						},
+					},
+					// Sort details by their createdAt field in asc. -1 = desc
+					{
+						"$sort": bson.M{
+							"createdAt": 1,
+						},
+					},
+					{
+						"$lookup": bson.M{
+							"from":         "accounts",
+							"localField":   "account",
+							"foreignField": "_id",
+							"as":           "account",
+						},
+					},
+					{
+						"$unwind": bson.M{
+							"path":                       "$account",
+							"preserveNullAndEmptyArrays": true,
+						},
+					},
+				},
+				// Use details as the field name to match struct field.
+				"as": "daybookDetails",
+			},
+		},
+	}
+
+	cur, err := r.Collection.Daybook.Aggregate(ctx, pipeline)
+	if err != nil {
+		r.logger.Error(err)
+	}
+	if err = cur.All(ctx, &daybooks); err != nil {
+		r.logger.Error(err)
+	}
+	daybook := daybooks[0]
+	sort.Slice(daybook.DaybookDetails[:], func(i, j int) bool {
+		return daybook.DaybookDetails[i].CreatedAt.Before(daybook.DaybookDetails[j].CreatedAt)
+	})
+	daybookDetails := []mDaybook.DaybookDetails{}
+	for _, row := range daybook.DaybookDetails {
+		daybookDetail := mDaybook.DaybookDetails{}
+		daybookDetail.Id = row.Id
+		daybookDetail.Name = row.Name
+		daybookDetail.Type = row.Type
+		daybookDetail.Amount = row.Amount
+		daybookDetail.Account = row.Account
+		daybookDetails = append(daybookDetails, daybookDetail)
+		switch row.Type {
+		case "DR":
+			daybook.DebitTotalAmount += row.Amount
+		case "CR":
+			daybook.CreditTotalAmount += row.Amount
+		}
+	}
+	daybook.DaybookDetails = daybookDetails
+	return daybook, nil
 }
 
 func (r daybookRepository) Create(ctx context.Context, payload mDaybook.Daybook) (mDaybook.Daybook, error) {

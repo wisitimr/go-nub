@@ -11,7 +11,6 @@ type Supplier struct {
 	Code      string             `bson:"code" json:"code"`
 	Name      string             `bson:"name" json:"name"`
 	Address   string             `bson:"address" json:"address"`
-	Tax       string             `bson:"tax" json:"tax"`
 	Phone     string             `bson:"phone" json:"phone"`
 	Contact   string             `bson:"contact" json:"contact"`
 	Company   primitive.ObjectID `bson:"company" json:"company"`

@@ -27,20 +27,27 @@ func (s ResponseDto) Respond(w http.ResponseWriter, r *http.Request, data interf
 			res.StatusCode = http.StatusBadRequest
 		}
 		res.Message = v.Error()
+	case ExcelFile:
+		f, _ := data.(ExcelFile)
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", "attachment; filename="+f.Name)
+		w.Header().Set("Content-Transfer-Encoding", "binary")
+		w.Header().Set("Expires", "0")
+		f.File.Write(w)
 	default:
 		res.StatusCode = http.StatusOK
 		res.Message = "Success"
 		res.Data = data
+		if status != 0 {
+			res.StatusCode = status
+		}
+		method := strings.ToLower(r.Method)
+		if (method == "post" || method == "put") && (res.StatusCode == http.StatusOK || res.StatusCode == http.StatusCreated) {
+			res.Message = "ทำรายการสำเร็จ"
+		} else if method == "delete" {
+			res.Message = "ลบสำเร็จ"
+		}
+		w.WriteHeader(res.StatusCode)
+		json.NewEncoder(w).Encode(res)
 	}
-	if status != 0 {
-		res.StatusCode = status
-	}
-	method := strings.ToLower(r.Method)
-	if (method == "post" || method == "put") && (res.StatusCode == http.StatusOK || res.StatusCode == http.StatusCreated) {
-		res.Message = "ทำรายการสำเร็จ"
-	} else if method == "delete" {
-		res.Message = "ลบสำเร็จ"
-	}
-	w.WriteHeader(res.StatusCode)
-	json.NewEncoder(w).Encode(res)
 }

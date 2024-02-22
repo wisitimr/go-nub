@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"saved/http/rest/internal/auth"
 	mDaybook "saved/http/rest/internal/model/daybook"
 	mDaybookDetail "saved/http/rest/internal/model/daybook_detail"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/xuri/excelize/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -45,20 +47,66 @@ func (s daybookService) FindAll(ctx context.Context, query map[string][]string) 
 	return res, nil
 }
 
-func (s daybookService) FindAllDetail(ctx context.Context, query map[string][]string) ([]mDaybook.DaybookResponse, error) {
-	res, err := s.daybookRepo.FindAllDetail(ctx, query)
-	if err != nil {
-		return []mDaybook.DaybookResponse{}, err
-	}
-	return res, nil
-}
-
 func (s daybookService) FindById(ctx context.Context, id string) (mDaybook.DaybookResponse, error) {
 	res, err := s.daybookRepo.FindById(ctx, id)
 	if err != nil {
 		return mDaybook.DaybookResponse{}, err
 	}
 	return res, nil
+}
+
+func (s daybookService) GenerateExcel(ctx context.Context, id string) (mRes.ExcelFile, error) {
+	res, err := s.daybookRepo.FindByIdForExcel(ctx, id)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx, err := excelize.OpenFile("config/templates/daybook.xlsx")
+
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	sheetName := "Sheet1"
+	xlsx.SetCellValue(sheetName, "A2", res.Company.Name)
+	xlsx.SetCellValue(sheetName, "A3", res.Company.Address)
+	xlsx.SetCellValue(sheetName, "A5", res.Document.Name)
+	var fileName string
+	if res.Supplier != nil {
+		fileName = fmt.Sprintf("%s-%s.xlsx", res.Number, res.Supplier.Name)
+		xlsx.SetCellValue(sheetName, "A7", res.Supplier.Code)
+		xlsx.SetCellValue(sheetName, "B8", res.Supplier.Name)
+	}
+	if res.Customer != nil {
+		fileName = fmt.Sprintf("%s-%s.xlsx", res.Number, res.Customer.Name)
+		xlsx.SetCellValue(sheetName, "A7", res.Customer.Code)
+		xlsx.SetCellValue(sheetName, "B8", res.Customer.Name)
+	}
+	xlsx.SetCellValue(sheetName, "E6", res.Number)
+	xlsx.SetCellValue(sheetName, "E7", res.TransactionDate.Format("02/01/2006"))
+	xlsx.SetCellValue(sheetName, "E8", res.Invoice)
+	cell := 10
+	for _, detail := range res.DaybookDetails {
+		xlsx.SetCellValue(sheetName, fmt.Sprintf("A%d", cell), detail.Account.Code)
+		xlsx.SetCellValue(sheetName, fmt.Sprintf("B%d", cell), detail.Account.Name)
+		xlsx.SetCellValue(sheetName, fmt.Sprintf("C%d", cell), detail.Name)
+		switch detail.Type {
+		case "DR":
+			xlsx.SetCellValue(sheetName, fmt.Sprintf("E%d", cell), detail.Amount)
+		case "CR":
+			xlsx.SetCellValue(sheetName, fmt.Sprintf("F%d", cell), detail.Amount)
+		}
+		cell++
+	}
+	xlsx.SetCellFormula(sheetName, "E21", "SUM(E10:E20)")
+	xlsx.SetCellFormula(sheetName, "F21", "SUM(F10:F20)")
+	xlsx.SetCellFormula(sheetName, "B21", "BAHTTEXT(E21)")
+	xlsx.SetCellValue(sheetName, "C23", fmt.Sprintf("..……%s…........…..ผู้จัดทำ", res.Company.Contact))
+	xlsx.SetCellValue(sheetName, "C24", fmt.Sprintf("....... %s.......ผู้บันทึกบัญชี", res.Company.Contact))
+	f := mRes.ExcelFile{}
+
+	f.File = xlsx
+	f.Name = fileName
+
+	return f, nil
 }
 
 func (s daybookService) Create(ctx context.Context, payload mDaybook.DaybookPayload) (mDaybook.DaybookPayload, error) {

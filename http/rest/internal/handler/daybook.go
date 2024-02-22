@@ -43,15 +43,6 @@ func (h daybookHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	h.Respond(w, r, daybooks, http.StatusOK)
 }
 
-func (h daybookHandler) FindAllDetail(w http.ResponseWriter, r *http.Request) {
-	daybooks, err := h.daybookService.FindAllDetail(r.Context(), r.URL.Query())
-	if err != nil {
-		h.Respond(w, r, err, 0)
-		return
-	}
-	h.Respond(w, r, daybooks, http.StatusOK)
-}
-
 func (h daybookHandler) FindById(w http.ResponseWriter, r *http.Request) {
 	daybook, err := h.daybookService.FindById(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
@@ -59,6 +50,16 @@ func (h daybookHandler) FindById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Respond(w, r, daybook, http.StatusOK)
+}
+
+func (h daybookHandler) GenerateExcel(w http.ResponseWriter, r *http.Request) {
+	f, err := h.daybookService.GenerateExcel(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+
+	h.Respond(w, r, f, 0)
 }
 
 func (h daybookHandler) Create(w http.ResponseWriter, r *http.Request) {
