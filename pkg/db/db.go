@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"saved/config"
+	"findigitalservice/config"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"

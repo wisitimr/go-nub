@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mAccount "saved/http/rest/internal/model/account"
-	mRes "saved/http/rest/internal/model/response"
+	mAccount "findigitalservice/http/rest/internal/model/account"
+	mRes "findigitalservice/http/rest/internal/model/response"
 )
 
 type AccountService interface {

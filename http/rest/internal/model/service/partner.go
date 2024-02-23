@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mPartner "saved/http/rest/internal/model/partner"
+	mPartner "findigitalservice/http/rest/internal/model/partner"
 )
 
 type PartnerService interface {

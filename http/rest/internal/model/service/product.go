@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mProduct "saved/http/rest/internal/model/product"
-	mRes "saved/http/rest/internal/model/response"
+	mProduct "findigitalservice/http/rest/internal/model/product"
+	mRes "findigitalservice/http/rest/internal/model/response"
 )
 
 type ProductService interface {

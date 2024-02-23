@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mUser "saved/http/rest/internal/model/user"
+	mUser "findigitalservice/http/rest/internal/model/user"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mCustomer "saved/http/rest/internal/model/customer"
+	mCustomer "findigitalservice/http/rest/internal/model/customer"
 )
 
 type CustomerRepository interface {

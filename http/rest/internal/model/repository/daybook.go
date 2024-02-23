@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mDaybook "saved/http/rest/internal/model/daybook"
+	mDaybook "findigitalservice/http/rest/internal/model/daybook"
 )
 
 type DaybookRepository interface {

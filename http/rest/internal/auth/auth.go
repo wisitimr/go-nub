@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"findigitalservice/http/rest/internal/model/response"
+	mUser "findigitalservice/http/rest/internal/model/user"
 	"log"
 	"os"
-	"saved/http/rest/internal/model/response"
-	mUser "saved/http/rest/internal/model/user"
 	"strconv"
 	"time"
 
@@ -31,6 +31,9 @@ func GenerateToken(user mUser.User) (response.TokenDto, error) {
 	// Set claims
 	claims := token.Claims.(jwt.MapClaims)
 	claims["id"] = user.Id
+	claims["username"] = user.Username
+	claims["firstName"] = user.FirstName
+	claims["lastName"] = user.LastName
 	claims["email"] = user.Email
 	claims["role"] = user.Role
 	expire, err := strconv.ParseInt(os.Getenv("JWT_EXP"), 10, 64)

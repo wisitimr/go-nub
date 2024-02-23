@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mMaterial "saved/http/rest/internal/model/material"
-	mRes "saved/http/rest/internal/model/response"
+	mMaterial "findigitalservice/http/rest/internal/model/material"
+	mRes "findigitalservice/http/rest/internal/model/response"
 )
 
 type MaterialService interface {

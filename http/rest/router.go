@@ -1,13 +1,13 @@
 package rest
 
 import (
+	_handler "findigitalservice/http/rest/internal/handler"
+	mCollection "findigitalservice/http/rest/internal/model/collection"
+	mHandler "findigitalservice/http/rest/internal/model/handler"
+	_repo "findigitalservice/http/rest/internal/repository"
+	_service "findigitalservice/http/rest/internal/service"
 	"net/http"
 	"os"
-	_handler "saved/http/rest/internal/handler"
-	mCollection "saved/http/rest/internal/model/collection"
-	mHandler "saved/http/rest/internal/model/handler"
-	_repo "saved/http/rest/internal/repository"
-	_service "saved/http/rest/internal/service"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"

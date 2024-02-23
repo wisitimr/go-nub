@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	mCollection "saved/http/rest/internal/model/collection"
-	mDaybookDetail "saved/http/rest/internal/model/daybook_detail"
-	mRepo "saved/http/rest/internal/model/repository"
-	"saved/http/rest/internal/util"
+	mCollection "findigitalservice/http/rest/internal/model/collection"
+	mDaybookDetail "findigitalservice/http/rest/internal/model/daybook_detail"
+	mRepo "findigitalservice/http/rest/internal/model/repository"
+	"findigitalservice/http/rest/internal/util"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"

@@ -2,11 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	mDaybookDetail "findigitalservice/http/rest/internal/model/daybook_detail"
+	mHandler "findigitalservice/http/rest/internal/model/handler"
+	mRes "findigitalservice/http/rest/internal/model/response"
+	mService "findigitalservice/http/rest/internal/model/service"
 	"net/http"
-	mDaybookDetail "saved/http/rest/internal/model/daybook_detail"
-	mHandler "saved/http/rest/internal/model/handler"
-	mRes "saved/http/rest/internal/model/response"
-	mService "saved/http/rest/internal/model/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"

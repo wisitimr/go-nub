@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mCustomer "saved/http/rest/internal/model/customer"
-	mRes "saved/http/rest/internal/model/response"
+	mCustomer "findigitalservice/http/rest/internal/model/customer"
+	mRes "findigitalservice/http/rest/internal/model/response"
 )
 
 type CustomerService interface {

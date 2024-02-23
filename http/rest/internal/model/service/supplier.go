@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mRes "saved/http/rest/internal/model/response"
-	mSupplier "saved/http/rest/internal/model/supplier"
+	mRes "findigitalservice/http/rest/internal/model/response"
+	mSupplier "findigitalservice/http/rest/internal/model/supplier"
 )
 
 type SupplierService interface {

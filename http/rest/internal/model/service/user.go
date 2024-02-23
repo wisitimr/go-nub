@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mRes "saved/http/rest/internal/model/response"
-	mUser "saved/http/rest/internal/model/user"
+	mRes "findigitalservice/http/rest/internal/model/response"
+	mUser "findigitalservice/http/rest/internal/model/user"
 )
 
 type UserService interface {

@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mDocument "saved/http/rest/internal/model/document"
+	mDocument "findigitalservice/http/rest/internal/model/document"
 )
 
 type DocumentService interface {

@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
-	"saved/http/rest/internal/auth"
-	mDaybook "saved/http/rest/internal/model/daybook"
-	mDaybookDetail "saved/http/rest/internal/model/daybook_detail"
-	mRepo "saved/http/rest/internal/model/repository"
-	mService "saved/http/rest/internal/model/service"
-	mUser "saved/http/rest/internal/model/user"
+	"findigitalservice/http/rest/internal/auth"
+	mDaybook "findigitalservice/http/rest/internal/model/daybook"
+	mDaybookDetail "findigitalservice/http/rest/internal/model/daybook_detail"
+	mRepo "findigitalservice/http/rest/internal/model/repository"
+	mService "findigitalservice/http/rest/internal/model/service"
+	mUser "findigitalservice/http/rest/internal/model/user"
 	"time"
 
 	"github.com/sirupsen/logrus"

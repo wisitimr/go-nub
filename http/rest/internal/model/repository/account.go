@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mAccount "saved/http/rest/internal/model/account"
+	mAccount "findigitalservice/http/rest/internal/model/account"
 )
 
 type AccountRepository interface {

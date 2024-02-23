@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mCompany "saved/http/rest/internal/model/company"
+	mCompany "findigitalservice/http/rest/internal/model/company"
 )
 
 type CompanyRepository interface {

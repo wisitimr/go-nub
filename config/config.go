@@ -22,7 +22,7 @@ type HTTPServer struct {
 
 type Database struct {
 	URI        string `envconfig:"DATABASE_URL" required:"true"`
-	Name       string `envconfig:"DATABASE_NAME" default:"saved"`
+	Name       string `envconfig:"DATABASE_NAME" default:"findigitalservice"`
 	Collection string
 }
 

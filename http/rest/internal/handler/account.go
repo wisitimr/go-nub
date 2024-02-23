@@ -2,11 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	mAccount "findigitalservice/http/rest/internal/model/account"
+	mHandler "findigitalservice/http/rest/internal/model/handler"
+	mRes "findigitalservice/http/rest/internal/model/response"
+	mService "findigitalservice/http/rest/internal/model/service"
 	"net/http"
-	mAccount "saved/http/rest/internal/model/account"
-	mHandler "saved/http/rest/internal/model/handler"
-	mRes "saved/http/rest/internal/model/response"
-	mService "saved/http/rest/internal/model/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"

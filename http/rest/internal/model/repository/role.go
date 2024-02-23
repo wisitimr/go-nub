@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mRole "saved/http/rest/internal/model/role"
+	mRole "findigitalservice/http/rest/internal/model/role"
 )
 
 type RoleRepository interface {

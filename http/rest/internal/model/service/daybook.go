@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mDaybook "saved/http/rest/internal/model/daybook"
-	mRes "saved/http/rest/internal/model/response"
+	mDaybook "findigitalservice/http/rest/internal/model/daybook"
+	mRes "findigitalservice/http/rest/internal/model/response"
 )
 
 type DaybookService interface {

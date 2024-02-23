@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	mAccount "saved/http/rest/internal/model/account"
-	mCollection "saved/http/rest/internal/model/collection"
-	mRepo "saved/http/rest/internal/model/repository"
-	"saved/http/rest/internal/util"
+	mAccount "findigitalservice/http/rest/internal/model/account"
+	mCollection "findigitalservice/http/rest/internal/model/collection"
+	mRepo "findigitalservice/http/rest/internal/model/repository"
+	"findigitalservice/http/rest/internal/util"
 	"sort"
 
 	"github.com/sirupsen/logrus"

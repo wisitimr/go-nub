@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mSupplier "saved/http/rest/internal/model/supplier"
+	mSupplier "findigitalservice/http/rest/internal/model/supplier"
 )
 
 type SupplierRepository interface {

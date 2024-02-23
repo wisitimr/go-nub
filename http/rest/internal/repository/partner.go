@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	mPartner "saved/http/rest/internal/model/partner"
-	mRepo "saved/http/rest/internal/model/repository"
-	"saved/http/rest/internal/util"
+	mPartner "findigitalservice/http/rest/internal/model/partner"
+	mRepo "findigitalservice/http/rest/internal/model/repository"
+	"findigitalservice/http/rest/internal/util"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"

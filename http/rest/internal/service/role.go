@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
-	"saved/http/rest/internal/auth"
-	mRepo "saved/http/rest/internal/model/repository"
-	mRole "saved/http/rest/internal/model/role"
-	mService "saved/http/rest/internal/model/service"
-	mUser "saved/http/rest/internal/model/user"
+	"findigitalservice/http/rest/internal/auth"
+	mRepo "findigitalservice/http/rest/internal/model/repository"
+	mRole "findigitalservice/http/rest/internal/model/role"
+	mService "findigitalservice/http/rest/internal/model/service"
+	mUser "findigitalservice/http/rest/internal/model/user"
 	"time"
 
 	"github.com/sirupsen/logrus"

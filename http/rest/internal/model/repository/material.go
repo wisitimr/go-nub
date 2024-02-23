@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mMaterial "saved/http/rest/internal/model/material"
+	mMaterial "findigitalservice/http/rest/internal/model/material"
 )
 
 type MaterialRepository interface {

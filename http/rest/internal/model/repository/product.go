@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mProduct "saved/http/rest/internal/model/product"
+	mProduct "findigitalservice/http/rest/internal/model/product"
 )
 
 type ProductRepository interface {

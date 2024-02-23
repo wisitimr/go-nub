@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mPartner "saved/http/rest/internal/model/partner"
+	mPartner "findigitalservice/http/rest/internal/model/partner"
 )
 
 type PartnerRepository interface {

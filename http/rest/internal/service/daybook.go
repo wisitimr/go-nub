@@ -2,14 +2,14 @@ package service
 
 import (
 	"context"
+	"findigitalservice/http/rest/internal/auth"
+	mDaybook "findigitalservice/http/rest/internal/model/daybook"
+	mDaybookDetail "findigitalservice/http/rest/internal/model/daybook_detail"
+	mRepo "findigitalservice/http/rest/internal/model/repository"
+	mRes "findigitalservice/http/rest/internal/model/response"
+	mService "findigitalservice/http/rest/internal/model/service"
+	mUser "findigitalservice/http/rest/internal/model/user"
 	"fmt"
-	"saved/http/rest/internal/auth"
-	mDaybook "saved/http/rest/internal/model/daybook"
-	mDaybookDetail "saved/http/rest/internal/model/daybook_detail"
-	mRepo "saved/http/rest/internal/model/repository"
-	mRes "saved/http/rest/internal/model/response"
-	mService "saved/http/rest/internal/model/service"
-	mUser "saved/http/rest/internal/model/user"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -56,6 +56,11 @@ func (s daybookService) FindById(ctx context.Context, id string) (mDaybook.Daybo
 }
 
 func (s daybookService) GenerateExcel(ctx context.Context, id string) (mRes.ExcelFile, error) {
+	user, err := auth.UserLogin(ctx, s.logger)
+	if err != nil {
+		user = mUser.User{}
+	}
+	s.logger.Warn(user)
 	res, err := s.daybookRepo.FindByIdForExcel(ctx, id)
 	if err != nil {
 		return mRes.ExcelFile{}, err
@@ -496,7 +501,7 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (mRes.Exce
 	if err != nil {
 		return mRes.ExcelFile{}, err
 	}
-	xlsx.SetCellValue(sheetName, creatorTextColumn, fmt.Sprintf(".......%s.......ผู้จัดทำ", res.Company.Contact))
+	xlsx.SetCellValue(sheetName, creatorTextColumn, fmt.Sprintf(".......%s %s.......ผู้จัดทำ", user.FirstName, user.LastName))
 	style, err = xlsx.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "TH Sarabun New",
@@ -588,7 +593,7 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (mRes.Exce
 	if err != nil {
 		return mRes.ExcelFile{}, err
 	}
-	xlsx.SetCellValue(sheetName, bookKeeperTextColumn, fmt.Sprintf(".......%s.......ผู้บันทึกบัญชี", res.Company.Contact))
+	xlsx.SetCellValue(sheetName, bookKeeperTextColumn, fmt.Sprintf(".......%s %s.......ผู้บันทึกบัญชี", user.FirstName, user.LastName))
 	style, err = xlsx.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Family: "TH Sarabun New",
