@@ -60,14 +60,18 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (mRes.Exce
 	if err != nil {
 		return mRes.ExcelFile{}, err
 	}
-	xlsx, err := excelize.OpenFile("config/templates/daybook.xlsx")
+	xlsx, err := excelize.OpenFile(fmt.Sprintf("config/templates/daybook/%s.xlsx", res.Company.Id.Hex()))
 
 	if err != nil {
 		return mRes.ExcelFile{}, err
 	}
+	fm := "_-* #,##0.00_-;-* #,##0.00_-;_-* \"-\"??_-;_-@_-"
 	sheetName := "Sheet1"
-	xlsx.SetCellValue(sheetName, "A2", res.Company.Name)
-	xlsx.SetCellValue(sheetName, "A3", res.Company.Address)
+	// if err := xlsx.AddPicture(sheetName, "A2", "658e542c6aebff64cf245e43.png", nil); err != nil {
+	// 	return mRes.ExcelFile{}, err
+	// }
+	xlsx.SetCellValue(sheetName, "B2", res.Company.Name)
+	xlsx.SetCellValue(sheetName, "B3", res.Company.Address)
 	xlsx.SetCellValue(sheetName, "A5", res.Document.Name)
 	var fileName string
 	if res.Supplier != nil {
@@ -80,27 +84,761 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (mRes.Exce
 		xlsx.SetCellValue(sheetName, "A7", res.Customer.Code)
 		xlsx.SetCellValue(sheetName, "B8", res.Customer.Name)
 	}
-	xlsx.SetCellValue(sheetName, "E6", res.Number)
-	xlsx.SetCellValue(sheetName, "E7", res.TransactionDate.Format("02/01/2006"))
-	xlsx.SetCellValue(sheetName, "E8", res.Invoice)
+	xlsx.SetCellValue(sheetName, "G6", res.Number)
+	xlsx.SetCellValue(sheetName, "G7", res.TransactionDate.Format("02/01/2006"))
+	xlsx.SetCellValue(sheetName, "G8", res.Invoice)
+	numberStyle, err := xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   24,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "right",
+			Indent:     1,
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+		},
+		CustomNumFmt: &fm,
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	textStyle, err := xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   24,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
 	cell := 10
 	for _, detail := range res.DaybookDetails {
+		err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("A%d", cell), fmt.Sprintf("A%d", cell), textStyle)
+		if err != nil {
+			return mRes.ExcelFile{}, err
+		}
+		err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), textStyle)
+		if err != nil {
+			return mRes.ExcelFile{}, err
+		}
 		xlsx.SetCellValue(sheetName, fmt.Sprintf("A%d", cell), detail.Account.Code)
 		xlsx.SetCellValue(sheetName, fmt.Sprintf("B%d", cell), detail.Account.Name)
-		xlsx.SetCellValue(sheetName, fmt.Sprintf("C%d", cell), detail.Name)
+		xlsx.SetCellValue(sheetName, fmt.Sprintf("E%d", cell), detail.Name)
 		switch detail.Type {
 		case "DR":
-			xlsx.SetCellValue(sheetName, fmt.Sprintf("E%d", cell), detail.Amount)
+			xlsx.SetCellValue(sheetName, fmt.Sprintf("G%d", cell), detail.Amount)
 		case "CR":
-			xlsx.SetCellValue(sheetName, fmt.Sprintf("F%d", cell), detail.Amount)
+			xlsx.SetCellValue(sheetName, fmt.Sprintf("H%d", cell), detail.Amount)
+		}
+		err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("G%d", cell), fmt.Sprintf("G%d", cell), numberStyle)
+		if err != nil {
+			return mRes.ExcelFile{}, err
+		}
+		err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("H%d", cell), fmt.Sprintf("H%d", cell), numberStyle)
+		if err != nil {
+			return mRes.ExcelFile{}, err
 		}
 		cell++
 	}
-	xlsx.SetCellFormula(sheetName, "E21", "SUM(E10:E20)")
-	xlsx.SetCellFormula(sheetName, "F21", "SUM(F10:F20)")
-	xlsx.SetCellFormula(sheetName, "B21", "BAHTTEXT(E21)")
-	xlsx.SetCellValue(sheetName, "C23", fmt.Sprintf("..……%s…........…..ผู้จัดทำ", res.Company.Contact))
-	xlsx.SetCellValue(sheetName, "C24", fmt.Sprintf("....... %s.......ผู้บันทึกบัญชี", res.Company.Contact))
+	defaultTableRecord := 20
+	if cell < defaultTableRecord {
+		length := defaultTableRecord - cell
+		for i := 0; i < length; i++ {
+			err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("A%d", cell), fmt.Sprintf("A%d", cell), textStyle)
+			if err != nil {
+				return mRes.ExcelFile{}, err
+			}
+			err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), textStyle)
+			if err != nil {
+				return mRes.ExcelFile{}, err
+			}
+			err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("G%d", cell), fmt.Sprintf("G%d", cell), numberStyle)
+			if err != nil {
+				return mRes.ExcelFile{}, err
+			}
+			err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("H%d", cell), fmt.Sprintf("H%d", cell), numberStyle)
+			if err != nil {
+				return mRes.ExcelFile{}, err
+			}
+			if i < length-1 {
+				cell++
+			}
+		}
+	}
+	cell++
+	bahtUnitColumn := fmt.Sprintf("A%d", cell)
+	xlsx.SetCellValue(sheetName, bahtUnitColumn, "บาท:")
+	style, err := xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "right",
+			Indent:     1,
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, bahtUnitColumn, bahtUnitColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	totalTextColumn := fmt.Sprintf("F%d", cell)
+	xlsx.SetCellValue(sheetName, totalTextColumn, "รวม")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "right",
+			Indent:     1,
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, totalTextColumn, totalTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	sumDrColumn := fmt.Sprintf("G%d", cell)
+	xlsx.SetCellFormula(sheetName, sumDrColumn, fmt.Sprintf("SUM(G10:G%d)", cell-1))
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "right",
+			Indent:     1,
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+		CustomNumFmt: &fm,
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, sumDrColumn, sumDrColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	sumCrColumn := fmt.Sprintf("H%d", cell)
+	xlsx.SetCellFormula(sheetName, sumCrColumn, fmt.Sprintf("SUM(H10:H%d)", cell-1))
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "right",
+			Indent:     1,
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+		CustomNumFmt: &fm,
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, sumCrColumn, sumCrColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	bahtTextColumn := fmt.Sprintf("B%d", cell)
+	err = xlsx.MergeCell(sheetName, bahtTextColumn, fmt.Sprintf("E%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Indent:     1,
+			Vertical:   "center",
+		},
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, bahtTextColumn, bahtTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellFormula(sheetName, bahtTextColumn, fmt.Sprintf("BAHTTEXT(%s)", sumDrColumn))
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("C%d", cell), fmt.Sprintf("C%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("E%d", cell), fmt.Sprintf("E%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	cell++
+	err = xlsx.AddFormControl(sheetName, excelize.FormControl{
+		Cell: fmt.Sprintf("A%d", cell),
+		Type: excelize.FormControlCheckBox,
+		Paragraph: []excelize.RichTextRun{
+			{
+				Font: &excelize.Font{
+					Family: "TH Sarabun New",
+					Size:   26,
+					Color:  "000000",
+				},
+				Text: "เงินสด",
+			},
+		},
+		Checked: true,
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("A%d", cell), fmt.Sprintf("A%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.AddFormControl(sheetName, excelize.FormControl{
+		Cell: fmt.Sprintf("B%d", cell),
+		Type: excelize.FormControlCheckBox,
+		Paragraph: []excelize.RichTextRun{
+			{
+				Font: &excelize.Font{
+					Family: "TH Sarabun New",
+					Size:   26,
+					Color:  "000000",
+				},
+				Text: "เช็ค",
+			},
+		},
+		Checked: false,
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.AddFormControl(sheetName, excelize.FormControl{
+		Cell: fmt.Sprintf("C%d", cell),
+		Type: excelize.FormControlCheckBox,
+		Paragraph: []excelize.RichTextRun{
+			{
+				Font: &excelize.Font{
+					Family: "TH Sarabun New",
+					Size:   26,
+					Color:  "000000",
+				},
+				Text: "โอนMB",
+			},
+		},
+		Checked: false,
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.AddFormControl(sheetName, excelize.FormControl{
+		Cell: fmt.Sprintf("D%d", cell),
+		Type: excelize.FormControlCheckBox,
+		Paragraph: []excelize.RichTextRun{
+			{
+				Font: &excelize.Font{
+					Family: "TH Sarabun New",
+					Size:   26,
+					Color:  "000000",
+				},
+				Text: "หักบัญชี",
+			},
+		},
+		Checked: false,
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("F%d", cell), fmt.Sprintf("F%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("H%d", cell), fmt.Sprintf("H%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	cell++
+	bankTextColumn := fmt.Sprintf("A%d", cell)
+	err = xlsx.MergeCell(sheetName, bankTextColumn, fmt.Sprintf("D%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, bankTextColumn, "ธนาคาร………………………...…………………….")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, bankTextColumn, bankTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	creatorTextColumn := fmt.Sprintf("E%d", cell)
+	err = xlsx.MergeCell(sheetName, creatorTextColumn, fmt.Sprintf("F%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, creatorTextColumn, fmt.Sprintf(".......%s.......ผู้จัดทำ", res.Company.Contact))
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, creatorTextColumn, creatorTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("F%d", cell), fmt.Sprintf("F%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("H%d", cell), fmt.Sprintf("H%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	///
+	cell++
+	checkNumberTextColumn := fmt.Sprintf("A%d", cell)
+	err = xlsx.MergeCell(sheetName, checkNumberTextColumn, fmt.Sprintf("D%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, checkNumberTextColumn, "เช็คเลขที่…….……………………………..…….….")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, checkNumberTextColumn, checkNumberTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	bookKeeperTextColumn := fmt.Sprintf("E%d", cell)
+	err = xlsx.MergeCell(sheetName, bookKeeperTextColumn, fmt.Sprintf("F%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, bookKeeperTextColumn, fmt.Sprintf(".......%s.......ผู้บันทึกบัญชี", res.Company.Contact))
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, bookKeeperTextColumn, bookKeeperTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("F%d", cell), fmt.Sprintf("F%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	dotAreaColumn := fmt.Sprintf("G%d", cell)
+	err = xlsx.MergeCell(sheetName, dotAreaColumn, fmt.Sprintf("H%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, dotAreaColumn, "…………………………….")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, dotAreaColumn, dotAreaColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("H%d", cell), fmt.Sprintf("H%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	///
+	cell++
+	datedTextColumn := fmt.Sprintf("A%d", cell)
+	err = xlsx.MergeCell(sheetName, datedTextColumn, fmt.Sprintf("D%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, datedTextColumn, "ลงวันที่……………………………….…..….……….")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, datedTextColumn, datedTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("B%d", cell), fmt.Sprintf("B%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("C%d", cell), fmt.Sprintf("C%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("D%d", cell), fmt.Sprintf("D%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	checkerTextColumn := fmt.Sprintf("E%d", cell)
+	err = xlsx.MergeCell(sheetName, checkerTextColumn, fmt.Sprintf("F%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, checkerTextColumn, "......………………………...…………….ผู้ตรวจ")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, checkerTextColumn, checkerTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("F%d", cell), fmt.Sprintf("F%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	approverTextColumn := fmt.Sprintf("G%d", cell)
+	err = xlsx.MergeCell(sheetName, approverTextColumn, fmt.Sprintf("H%d", cell))
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	xlsx.SetCellValue(sheetName, approverTextColumn, "ผู้อนุมัติ")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Indent:     1,
+			Vertical:   "bottom",
+		},
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, approverTextColumn, approverTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, fmt.Sprintf("H%d", cell), fmt.Sprintf("H%d", cell), style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	cell = cell + 3
+	endTextColumn := fmt.Sprintf("A%d", cell)
+	xlsx.SetCellValue(sheetName, endTextColumn, "ผู้รับเงิน……………………………………………………………….วันที่…………………………………………………………………")
+	style, err = xlsx.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Family: "TH Sarabun New",
+			Size:   26,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "left",
+			Indent:     1,
+			Vertical:   "right",
+		},
+	})
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
+	err = xlsx.SetCellStyle(sheetName, endTextColumn, endTextColumn, style)
+	if err != nil {
+		return mRes.ExcelFile{}, err
+	}
 	f := mRes.ExcelFile{}
 
 	f.File = xlsx
