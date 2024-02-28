@@ -6,7 +6,6 @@ import (
 	mCollection "findigitalservice/http/rest/internal/model/collection"
 	mRepo "findigitalservice/http/rest/internal/model/repository"
 	"findigitalservice/http/rest/internal/util"
-	"sort"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -36,7 +35,7 @@ func (r accountRepository) Count(ctx context.Context) (int64, error) {
 
 func (r accountRepository) FindAll(ctx context.Context, query map[string][]string) ([]mAccount.Account, error) {
 	accounts := []mAccount.Account{}
-	cur, err := r.Collection.Account.Find(ctx, util.QueryHandler(query))
+	cur, err := r.Collection.Account.Find(ctx, util.QueryHandler(query), options.Find().SetSort(bson.D{{Key: "code", Value: 1}}))
 	if err != nil {
 		return accounts, err
 	}
@@ -49,9 +48,6 @@ func (r accountRepository) FindAll(ctx context.Context, query map[string][]strin
 		}
 		accounts = append(accounts, e)
 	}
-	sort.Slice(accounts[:], func(i, j int) bool {
-		return accounts[i].Code < accounts[j].Code
-	})
 	return accounts, nil
 }
 

@@ -5,8 +5,8 @@ import (
 	mCollection "findigitalservice/http/rest/internal/model/collection"
 	mDaybook "findigitalservice/http/rest/internal/model/daybook"
 	mRepo "findigitalservice/http/rest/internal/model/repository"
-	"findigitalservice/http/rest/internal/util"
 	"sort"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -27,7 +27,42 @@ func InitDaybookRepository(collection mCollection.Collection, logger *logrus.Log
 }
 
 func (r daybookRepository) Count(ctx context.Context, query map[string][]string) (int64, error) {
-	count, err := r.Collection.Daybook.CountDocuments(ctx, util.QueryHandler(query))
+	filter := bson.M{}
+	if query["company"] != nil {
+		doc, _ := primitive.ObjectIDFromHex(query["company"][0])
+		filter["company"] = bson.M{"$eq": doc}
+	}
+	const (
+		layoutISO = "2006-01-02T15:04:05.000Z"
+	)
+	if query["transactionDate.gte"] != nil && query["transactionDate.lt"] != nil {
+		from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
+		to, _ := time.Parse(layoutISO, query["transactionDate.lt"][0])
+		filter["transactionDate"] = bson.M{
+			"$gte": from,
+			"$lt":  to,
+		}
+	} else if query["transactionDate.gte"] != nil {
+		from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
+		filter["transactionDate"] = bson.M{
+			"$gte": from,
+		}
+	} else if query["transactionDate.lt"] != nil {
+		to, _ := time.Parse(layoutISO, query["transactionDate.lt"][0])
+		filter["transactionDate"] = bson.M{
+			"$lt": to,
+		}
+	}
+	if len(filter) > 1 {
+		and := bson.M{}
+		for key, value := range filter {
+			and[key] = value
+		}
+		filter = bson.M{
+			"$and": bson.A{and},
+		}
+	}
+	count, err := r.Collection.Daybook.CountDocuments(ctx, filter)
 	if err != nil {
 		r.logger.Error(err)
 	}
@@ -36,9 +71,44 @@ func (r daybookRepository) Count(ctx context.Context, query map[string][]string)
 
 func (r daybookRepository) FindAll(ctx context.Context, query map[string][]string) ([]mDaybook.DaybookList, error) {
 	daybooks := []mDaybook.DaybookList{}
+	filter := bson.M{}
+	if query["company"] != nil {
+		doc, _ := primitive.ObjectIDFromHex(query["company"][0])
+		filter["company"] = bson.M{"$eq": doc}
+	}
+	const (
+		layoutISO = "2006-01-02T15:04:05.000Z"
+	)
+	if query["transactionDate.gte"] != nil && query["transactionDate.lt"] != nil {
+		from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
+		to, _ := time.Parse(layoutISO, query["transactionDate.lt"][0])
+		filter["transactionDate"] = bson.M{
+			"$gte": from,
+			"$lt":  to,
+		}
+	} else if query["transactionDate.gte"] != nil {
+		from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
+		filter["transactionDate"] = bson.M{
+			"$gte": from,
+		}
+	} else if query["transactionDate.lt"] != nil {
+		to, _ := time.Parse(layoutISO, query["transactionDate.lt"][0])
+		filter["transactionDate"] = bson.M{
+			"$lt": to,
+		}
+	}
+	if len(filter) > 1 {
+		and := bson.M{}
+		for key, value := range filter {
+			and[key] = value
+		}
+		filter = bson.M{
+			"$and": bson.A{and},
+		}
+	}
 	pipeline := []bson.M{
 		{
-			"$match": util.QueryHandler(query),
+			"$match": filter,
 		},
 		{
 			"$lookup": bson.M{
@@ -98,7 +168,7 @@ func (r daybookRepository) FindAll(ctx context.Context, query map[string][]strin
 		},
 		{
 			"$sort": bson.M{
-				"createdAt": 1,
+				"transactionDate": -1,
 			},
 		},
 	}

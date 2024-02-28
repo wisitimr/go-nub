@@ -88,6 +88,7 @@ func (s userService) Create(ctx context.Context, payload mUser.User) (mUser.User
 			FirstName: payload.FirstName,
 			LastName:  payload.LastName,
 			Email:     payload.Email,
+			Role:      "user",
 			Password:  auth.Hash([]byte(payload.Password)),
 			CreatedBy: newId,
 			CreatedAt: time.Now(),
