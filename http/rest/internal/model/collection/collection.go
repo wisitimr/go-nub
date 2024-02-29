@@ -8,6 +8,7 @@ type Collection struct {
 	Supplier      *mongo.Collection
 	Customer      *mongo.Collection
 	Document      *mongo.Collection
+	PaymentMethod *mongo.Collection
 	Product       *mongo.Collection
 	Company       *mongo.Collection
 	Daybook       *mongo.Collection

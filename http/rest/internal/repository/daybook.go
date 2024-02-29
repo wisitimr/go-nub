@@ -202,6 +202,7 @@ func (r daybookRepository) FindById(ctx context.Context, id string) (mDaybook.Da
 	result.Company = daybook.Company
 	result.Supplier = daybook.Supplier
 	result.Customer = daybook.Customer
+	result.PaymentMethod = daybook.PaymentMethod
 	result.CreatedBy = daybook.CreatedBy
 	result.CreatedAt = daybook.CreatedAt
 	result.UpdatedBy = daybook.UpdatedBy
@@ -443,6 +444,7 @@ func (r daybookRepository) Update(ctx context.Context, payload mDaybook.Daybook)
 			"company":         payload.Company,
 			"supplier":        payload.Supplier,
 			"customer":        payload.Customer,
+			"paymentMethod":   payload.PaymentMethod,
 			"daybookDetails":  payload.DaybookDetails,
 			"updatedBy":       payload.UpdatedBy,
 			"updatedAt":       payload.UpdatedAt,

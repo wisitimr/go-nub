@@ -15,6 +15,7 @@ type Daybook struct {
 	Company         primitive.ObjectID   `bson:"company" json:"company"`
 	Customer        *primitive.ObjectID  `bson:"customer" json:"customer"`
 	Supplier        *primitive.ObjectID  `bson:"supplier" json:"supplier"`
+	PaymentMethod   *primitive.ObjectID  `bson:"paymentMethod" json:"paymentMethod"`
 	DaybookDetails  []primitive.ObjectID `bson:"daybookDetails" json:"daybookDetails"`
 	CreatedBy       primitive.ObjectID   `bson:"createdBy" json:"createdBy"`
 	CreatedAt       time.Time            `bson:"createdAt" json:"createdAt"`
@@ -31,6 +32,7 @@ type DaybookPayload struct {
 	Company         primitive.ObjectID     `bson:"company" json:"company"`
 	Customer        *primitive.ObjectID    `bson:"customer" json:"customer"`
 	Supplier        *primitive.ObjectID    `bson:"supplier" json:"supplier"`
+	PaymentMethod   *primitive.ObjectID    `bson:"paymentMethod" json:"paymentMethod"`
 	DaybookDetails  []DaybookPayloadDetail `bson:"daybookDetails" json:"daybookDetails"`
 	CreatedBy       primitive.ObjectID     `bson:"createdBy" json:"createdBy"`
 	CreatedAt       time.Time              `bson:"createdAt" json:"createdAt"`
@@ -47,6 +49,7 @@ type DaybookList struct {
 	Company         Company              `bson:"company" json:"company"`
 	Customer        *Customer            `bson:"customer" json:"customer"`
 	Supplier        *Supplier            `bson:"supplier" json:"supplier"`
+	PaymentMethod   *primitive.ObjectID  `bson:"paymentMethod" json:"paymentMethod"`
 	DaybookDetails  []primitive.ObjectID `bson:"daybookDetails" json:"daybookDetails"`
 	CreatedBy       primitive.ObjectID   `bson:"createdBy" json:"createdBy"`
 	CreatedAt       time.Time            `bson:"createdAt" json:"createdAt"`
@@ -75,6 +78,7 @@ type DaybookResponse struct {
 	Company           primitive.ObjectID  `bson:"company" json:"company"`
 	Customer          *primitive.ObjectID `bson:"customer" json:"customer"`
 	Supplier          *primitive.ObjectID `bson:"supplier" json:"supplier"`
+	PaymentMethod     *primitive.ObjectID `bson:"paymentMethod" json:"paymentMethod"`
 	DaybookDetails    []DaybookDetails    `bson:"daybookDetails" json:"daybookDetails"`
 	DebitTotalAmount  float64             `bson:"debitTotalAmount" json:"debitTotalAmount"`
 	CreditTotalAmount float64             `bson:"creditTotalAmount" json:"creditTotalAmount"`
@@ -85,21 +89,22 @@ type DaybookResponse struct {
 }
 
 type DaybookExpand struct {
-	Id                primitive.ObjectID `bson:"_id" json:"id"`
-	Number            string             `bson:"number" json:"number"`
-	Invoice           string             `bson:"invoice" json:"invoice"`
-	Document          Document           `bson:"document" json:"document"`
-	TransactionDate   time.Time          `bson:"transactionDate" json:"transactionDate"`
-	Company           Company            `bson:"company" json:"company"`
-	Customer          *Customer          `bson:"customer" json:"customer"`
-	Supplier          *Supplier          `bson:"supplier" json:"supplier"`
-	DaybookDetails    []DaybookDetails   `bson:"daybookDetails" json:"daybookDetails"`
-	DebitTotalAmount  float64            `bson:"debitTotalAmount" json:"debitTotalAmount"`
-	CreditTotalAmount float64            `bson:"creditTotalAmount" json:"creditTotalAmount"`
-	CreatedBy         primitive.ObjectID `bson:"createdBy" json:"createdBy"`
-	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedBy         primitive.ObjectID `bson:"updatedBy" json:"updatedBy"`
-	UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
+	Id                primitive.ObjectID  `bson:"_id" json:"id"`
+	Number            string              `bson:"number" json:"number"`
+	Invoice           string              `bson:"invoice" json:"invoice"`
+	Document          Document            `bson:"document" json:"document"`
+	TransactionDate   time.Time           `bson:"transactionDate" json:"transactionDate"`
+	Company           Company             `bson:"company" json:"company"`
+	Customer          *Customer           `bson:"customer" json:"customer"`
+	Supplier          *Supplier           `bson:"supplier" json:"supplier"`
+	PaymentMethod     *primitive.ObjectID `bson:"paymentMethod" json:"paymentMethod"`
+	DaybookDetails    []DaybookDetails    `bson:"daybookDetails" json:"daybookDetails"`
+	DebitTotalAmount  float64             `bson:"debitTotalAmount" json:"debitTotalAmount"`
+	CreditTotalAmount float64             `bson:"creditTotalAmount" json:"creditTotalAmount"`
+	CreatedBy         primitive.ObjectID  `bson:"createdBy" json:"createdBy"`
+	CreatedAt         time.Time           `bson:"createdAt" json:"createdAt"`
+	UpdatedBy         primitive.ObjectID  `bson:"updatedBy" json:"updatedBy"`
+	UpdatedAt         time.Time           `bson:"updatedAt" json:"updatedAt"`
 }
 
 type Customer struct {

@@ -28,6 +28,7 @@ type Handlers struct {
 	daybookHandler       mHandler.DaybookHandler
 	daybookDetailHandler mHandler.DaybookDetailHandler
 	documentHandler      mHandler.DocumentHandler
+	paymentMethodHandler mHandler.PaymentMethodHandler
 	roleHandler          mHandler.RoleHandler
 	materialHandler      mHandler.MaterialHandler
 }
@@ -149,6 +150,12 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Post("/", h.documentHandler.Create)
 				r.Put("/{id}", h.documentHandler.Update)
 			})
+			r.Route("/payment/method", func(r chi.Router) {
+				r.Get("/", h.paymentMethodHandler.FindAll)
+				r.Get("/{id}", h.paymentMethodHandler.FindById)
+				r.Post("/", h.paymentMethodHandler.Create)
+				r.Put("/{id}", h.paymentMethodHandler.Update)
+			})
 			r.Route("/role", func(r chi.Router) {
 				r.Get("/", h.roleHandler.FindAll)
 				r.Get("/{id}", h.roleHandler.FindById)
@@ -169,6 +176,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) Handlers {
 		Supplier:      db.Collection("suppliers"),
 		Customer:      db.Collection("customers"),
 		Document:      db.Collection("documents"),
+		PaymentMethod: db.Collection("payment_methods"),
 		Product:       db.Collection("products"),
 		Company:       db.Collection("companies"),
 		Daybook:       db.Collection("daybooks"),
@@ -186,6 +194,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) Handlers {
 	daybookRepo := _repo.InitDaybookRepository(collection, logger)
 	daybookDetailRepo := _repo.InitDaybookDetailRepository(collection, logger)
 	documentRepo := _repo.InitDocumentRepository(collection, logger)
+	paymentMethodRepo := _repo.InitPaymentMethodRepository(collection, logger)
 	roleRepo := _repo.InitRoleRepository(collection, logger)
 	materialRepo := _repo.InitMaterialRepository(collection, logger)
 
@@ -199,6 +208,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) Handlers {
 	daybookService := _service.InitDaybookService(daybookRepo, daybookDetailRepo, logger)
 	daybookDetailService := _service.InitDaybookDetailService(daybookDetailRepo, daybookRepo, logger)
 	documentService := _service.InitDocumentService(documentRepo, logger)
+	paymentMethodService := _service.InitPaymentMethodService(paymentMethodRepo, logger)
 	roleService := _service.InitRoleService(roleRepo, logger)
 	materialService := _service.InitMaterialService(materialRepo, logger)
 
@@ -212,6 +222,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) Handlers {
 	daybookHandler := _handler.InitDaybookHandler(daybookService, logger)
 	daybookDetailHandler := _handler.InitDaybookDetailHandler(daybookDetailService, logger)
 	documentHandler := _handler.InitDocumentHandler(documentService, logger)
+	paymentMethodHandler := _handler.InitPaymentMethodHandler(paymentMethodService, logger)
 	roleHandler := _handler.InitRoleHandler(roleService, logger)
 	materialHandler := _handler.InitMaterialHandler(materialService, logger)
 
@@ -226,6 +237,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) Handlers {
 		daybookHandler:       daybookHandler,
 		daybookDetailHandler: daybookDetailHandler,
 		documentHandler:      documentHandler,
+		paymentMethodHandler: paymentMethodHandler,
 		roleHandler:          roleHandler,
 		materialHandler:      materialHandler,
 	}
