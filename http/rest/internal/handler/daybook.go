@@ -93,7 +93,7 @@ func (h daybookHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h daybookHandler) GenerateFinancialStatement(w http.ResponseWriter, r *http.Request) {
-	f, err := h.daybookService.GenerateFinancialStatement(r.Context(), chi.URLParam(r, "company"))
+	f, err := h.daybookService.GenerateFinancialStatement(r.Context(), chi.URLParam(r, "company"), chi.URLParam(r, "year"))
 	if err != nil {
 		h.Respond(w, r, err, 0)
 		return

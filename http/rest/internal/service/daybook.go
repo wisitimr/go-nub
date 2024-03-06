@@ -891,8 +891,8 @@ func (s daybookService) Update(ctx context.Context, id string, payload mDaybook.
 	return res, nil
 }
 
-func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string) (*excelize.File, error) {
-	financial, err := s.Daybook.GenerateFinancialStatement(ctx, company)
+func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error) {
+	financial, err := s.Daybook.GenerateFinancialStatement(ctx, company, year)
 	if err != nil {
 		return nil, err
 	}

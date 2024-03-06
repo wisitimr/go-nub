@@ -481,7 +481,7 @@ func (r daybookRepository) Update(ctx context.Context, payload mDaybook.Daybook)
 	return updated, nil
 }
 
-func (r daybookRepository) GenerateFinancialStatement(ctx context.Context, company string) ([]mDaybook.DaybookFinancialStatement, error) {
+func (r daybookRepository) GenerateFinancialStatement(ctx context.Context, company string, year string) ([]mDaybook.DaybookFinancialStatement, error) {
 	var accounts []mDaybook.DaybookFinancialStatement
 	doc, err := primitive.ObjectIDFromHex(company)
 	if err != nil {
