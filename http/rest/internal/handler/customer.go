@@ -18,9 +18,9 @@ type customerHandler struct {
 	mRes.ResponseDto
 }
 
-func InitCustomerHandler(customerService mService.CustomerService, logger *logrus.Logger) mHandler.CustomerHandler {
+func InitCustomerHandler(service mService.Service, logger *logrus.Logger) mHandler.CustomerHandler {
 	return customerHandler{
-		customerService: customerService,
+		customerService: service.Customer,
 		logger:          logger,
 	}
 }

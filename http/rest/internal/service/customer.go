@@ -19,9 +19,9 @@ type customerService struct {
 	logger       *logrus.Logger
 }
 
-func InitCustomerService(customerRepo mRepo.CustomerRepository, logger *logrus.Logger) mService.CustomerService {
+func InitCustomerService(repo mRepo.Repository, logger *logrus.Logger) mService.CustomerService {
 	return &customerService{
-		customerRepo: customerRepo,
+		customerRepo: repo.Customer,
 		logger:       logger,
 	}
 }

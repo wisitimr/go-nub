@@ -22,9 +22,9 @@ type userService struct {
 	logger   *logrus.Logger
 }
 
-func InitUserService(userRepo mRepo.UserRepository, logger *logrus.Logger) mService.UserService {
+func InitUserService(repo mRepo.Repository, logger *logrus.Logger) mService.UserService {
 	return &userService{
-		userRepo: userRepo,
+		userRepo: repo.User,
 		logger:   logger,
 	}
 }

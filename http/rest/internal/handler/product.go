@@ -18,9 +18,9 @@ type productHandler struct {
 	mRes.ResponseDto
 }
 
-func InitProductHandler(productService mService.ProductService, logger *logrus.Logger) mHandler.ProductHandler {
+func InitProductHandler(service mService.Service, logger *logrus.Logger) mHandler.ProductHandler {
 	return productHandler{
-		productService: productService,
+		productService: service.Product,
 		logger:         logger,
 	}
 }

@@ -18,9 +18,9 @@ type companyService struct {
 	logger      *logrus.Logger
 }
 
-func InitCompanyService(companyRepo mRepo.CompanyRepository, logger *logrus.Logger) mService.CompanyService {
+func InitCompanyService(repo mRepo.Repository, logger *logrus.Logger) mService.CompanyService {
 	return &companyService{
-		companyRepo: companyRepo,
+		companyRepo: repo.Company,
 		logger:      logger,
 	}
 }

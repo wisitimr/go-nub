@@ -4,6 +4,8 @@ import (
 	_handler "findigitalservice/http/rest/internal/handler"
 	mCollection "findigitalservice/http/rest/internal/model/collection"
 	mHandler "findigitalservice/http/rest/internal/model/handler"
+	mRepo "findigitalservice/http/rest/internal/model/repository"
+	mService "findigitalservice/http/rest/internal/model/service"
 	_repo "findigitalservice/http/rest/internal/repository"
 	_service "findigitalservice/http/rest/internal/service"
 	"net/http"
@@ -16,22 +18,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-type Handlers struct {
-	authToken            *jwtauth.JWTAuth
-	userHandler          mHandler.UserHandler
-	accountHandler       mHandler.AccountHandler
-	supplierHandler      mHandler.SupplierHandler
-	customerHandler      mHandler.CustomerHandler
-	productHandler       mHandler.ProductHandler
-	companyHandler       mHandler.CompanyHandler
-	daybookHandler       mHandler.DaybookHandler
-	daybookDetailHandler mHandler.DaybookDetailHandler
-	documentHandler      mHandler.DocumentHandler
-	paymentMethodHandler mHandler.PaymentMethodHandler
-	roleHandler          mHandler.RoleHandler
-	materialHandler      mHandler.MaterialHandler
-}
 
 func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 	r := chi.NewRouter()
@@ -61,106 +47,107 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Route("/auth", func(r chi.Router) {
-				r.Post("/register", h.userHandler.Create)
-				r.Post("/login", h.userHandler.Login)
+				r.Post("/register", h.User.Create)
+				r.Post("/login", h.User.Login)
 			})
 		})
 		r.Group(func(r chi.Router) {
 			// Seek, verify and validate JWT tokens
-			r.Use(jwtauth.Verifier(h.authToken))
+			r.Use(jwtauth.Verifier(h.AuthToken))
 
 			// Handle valid / invalid tokens. In this example, we use
 			// the provided authenticator middleware, but you can write your
 			// own very easily, look at the Authenticator method in jwtauth.go
 			// and tweak it, its not scary.
-			r.Use(jwtauth.Authenticator(h.authToken))
+			r.Use(jwtauth.Authenticator(h.AuthToken))
 			r.Route("/user", func(r chi.Router) {
-				r.Get("/", h.userHandler.FindAll)
-				r.Get("/{id}", h.userHandler.FindById)
-				r.Get("/profile", h.userHandler.FindUserProfile)
-				r.Get("/company", h.userHandler.FindUserCompany)
-				r.Put("/{id}", h.userHandler.Update)
-				r.Get("/count", h.userHandler.Count)
+				r.Get("/", h.User.FindAll)
+				r.Get("/{id}", h.User.FindById)
+				r.Get("/profile", h.User.FindUserProfile)
+				r.Get("/company", h.User.FindUserCompany)
+				r.Put("/{id}", h.User.Update)
+				r.Get("/count", h.User.Count)
 			})
 			r.Route("/account", func(r chi.Router) {
-				r.Get("/", h.accountHandler.FindAll)
-				r.Get("/{id}", h.accountHandler.FindById)
-				r.Post("/", h.accountHandler.Create)
-				r.Put("/{id}", h.accountHandler.Update)
-				r.Get("/count", h.accountHandler.Count)
-				r.Delete("/{id}", h.accountHandler.Delete)
+				r.Get("/", h.Account.FindAll)
+				r.Get("/{id}", h.Account.FindById)
+				r.Post("/", h.Account.Create)
+				r.Put("/{id}", h.Account.Update)
+				r.Get("/count", h.Account.Count)
+				r.Delete("/{id}", h.Account.Delete)
 			})
 			r.Route("/supplier", func(r chi.Router) {
-				r.Get("/", h.supplierHandler.FindAll)
-				r.Get("/{id}", h.supplierHandler.FindById)
-				r.Post("/", h.supplierHandler.Create)
-				r.Put("/{id}", h.supplierHandler.Update)
-				r.Get("/count", h.supplierHandler.Count)
-				r.Delete("/{id}", h.supplierHandler.Delete)
+				r.Get("/", h.Supplier.FindAll)
+				r.Get("/{id}", h.Supplier.FindById)
+				r.Post("/", h.Supplier.Create)
+				r.Put("/{id}", h.Supplier.Update)
+				r.Get("/count", h.Supplier.Count)
+				r.Delete("/{id}", h.Supplier.Delete)
 			})
 			r.Route("/customer", func(r chi.Router) {
-				r.Get("/", h.customerHandler.FindAll)
-				r.Get("/{id}", h.customerHandler.FindById)
-				r.Post("/", h.customerHandler.Create)
-				r.Put("/{id}", h.customerHandler.Update)
-				r.Get("/count", h.customerHandler.Count)
-				r.Delete("/{id}", h.customerHandler.Delete)
+				r.Get("/", h.Customer.FindAll)
+				r.Get("/{id}", h.Customer.FindById)
+				r.Post("/", h.Customer.Create)
+				r.Put("/{id}", h.Customer.Update)
+				r.Get("/count", h.Customer.Count)
+				r.Delete("/{id}", h.Customer.Delete)
 			})
 			r.Route("/product", func(r chi.Router) {
-				r.Get("/", h.productHandler.FindAll)
-				r.Get("/{id}", h.productHandler.FindById)
-				r.Post("/", h.productHandler.Create)
-				r.Put("/{id}", h.productHandler.Update)
-				r.Get("/count", h.productHandler.Count)
-				r.Delete("/{id}", h.productHandler.Delete)
+				r.Get("/", h.Product.FindAll)
+				r.Get("/{id}", h.Product.FindById)
+				r.Post("/", h.Product.Create)
+				r.Put("/{id}", h.Product.Update)
+				r.Get("/count", h.Product.Count)
+				r.Delete("/{id}", h.Product.Delete)
 			})
 			r.Route("/material", func(r chi.Router) {
-				r.Get("/", h.materialHandler.FindAll)
-				r.Get("/{id}", h.materialHandler.FindById)
-				r.Post("/", h.materialHandler.Create)
-				r.Put("/{id}", h.materialHandler.Update)
-				r.Get("/count", h.materialHandler.Count)
-				r.Delete("/{id}", h.materialHandler.Delete)
+				r.Get("/", h.Material.FindAll)
+				r.Get("/{id}", h.Material.FindById)
+				r.Post("/", h.Material.Create)
+				r.Put("/{id}", h.Material.Update)
+				r.Get("/count", h.Material.Count)
+				r.Delete("/{id}", h.Material.Delete)
 			})
 			r.Route("/company", func(r chi.Router) {
-				r.Get("/", h.companyHandler.FindAll)
-				r.Get("/{id}", h.companyHandler.FindById)
-				r.Post("/", h.companyHandler.Create)
-				r.Put("/{id}", h.companyHandler.Update)
+				r.Get("/", h.Company.FindAll)
+				r.Get("/{id}", h.Company.FindById)
+				r.Post("/", h.Company.Create)
+				r.Put("/{id}", h.Company.Update)
 			})
 			r.Route("/daybook", func(r chi.Router) {
-				r.Get("/", h.daybookHandler.FindAll)
-				r.Get("/{id}", h.daybookHandler.FindById)
-				r.Post("/", h.daybookHandler.Create)
-				r.Put("/{id}", h.daybookHandler.Update)
-				r.Get("/count", h.daybookHandler.Count)
+				r.Get("/", h.Daybook.FindAll)
+				r.Get("/{id}", h.Daybook.FindById)
+				r.Post("/", h.Daybook.Create)
+				r.Put("/{id}", h.Daybook.Update)
+				r.Get("/count", h.Daybook.Count)
 				r.Route("/generate", func(r chi.Router) {
-					r.Get("/excel/{id}", h.daybookHandler.GenerateExcel)
+					r.Get("/excel/{id}", h.Daybook.GenerateExcel)
+					r.Get("/financial/{company}", h.Daybook.GenerateFinancialStatement)
 				})
 			})
 			r.Route("/daybook/detail", func(r chi.Router) {
-				r.Get("/", h.daybookDetailHandler.FindAll)
-				r.Get("/{id}", h.daybookDetailHandler.FindById)
-				r.Post("/", h.daybookDetailHandler.Create)
-				r.Put("/{id}", h.daybookDetailHandler.Update)
+				r.Get("/", h.DaybookDetail.FindAll)
+				r.Get("/{id}", h.DaybookDetail.FindById)
+				r.Post("/", h.DaybookDetail.Create)
+				r.Put("/{id}", h.DaybookDetail.Update)
 			})
 			r.Route("/document", func(r chi.Router) {
-				r.Get("/", h.documentHandler.FindAll)
-				r.Get("/{id}", h.documentHandler.FindById)
-				r.Post("/", h.documentHandler.Create)
-				r.Put("/{id}", h.documentHandler.Update)
+				r.Get("/", h.Document.FindAll)
+				r.Get("/{id}", h.Document.FindById)
+				r.Post("/", h.Document.Create)
+				r.Put("/{id}", h.Document.Update)
 			})
 			r.Route("/payment/method", func(r chi.Router) {
-				r.Get("/", h.paymentMethodHandler.FindAll)
-				r.Get("/{id}", h.paymentMethodHandler.FindById)
-				r.Post("/", h.paymentMethodHandler.Create)
-				r.Put("/{id}", h.paymentMethodHandler.Update)
+				r.Get("/", h.PaymentMethod.FindAll)
+				r.Get("/{id}", h.PaymentMethod.FindById)
+				r.Post("/", h.PaymentMethod.Create)
+				r.Put("/{id}", h.PaymentMethod.Update)
 			})
 			r.Route("/role", func(r chi.Router) {
-				r.Get("/", h.roleHandler.FindAll)
-				r.Get("/{id}", h.roleHandler.FindById)
-				r.Post("/", h.roleHandler.Create)
-				r.Put("/{id}", h.roleHandler.Update)
+				r.Get("/", h.Role.FindAll)
+				r.Get("/{id}", h.Role.FindById)
+				r.Post("/", h.Role.Create)
+				r.Put("/{id}", h.Role.Update)
 			})
 		})
 	})
@@ -168,7 +155,7 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 	return r
 }
 
-func initRouter(db *mongo.Database, logger *logrus.Logger) Handlers {
+func initRouter(db *mongo.Database, logger *logrus.Logger) mHandler.Handler {
 	// init collection
 	collection := mCollection.Collection{
 		User:          db.Collection("users"),
@@ -185,60 +172,53 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) Handlers {
 		Material:      db.Collection("materials"),
 	}
 	// init repository
-	userRepo := _repo.InitUserRepository(collection, logger)
-	accountRepo := _repo.InitAccountRepository(collection, logger)
-	supplierRepo := _repo.InitSupplierRepository(collection, logger)
-	customerRepo := _repo.InitCustomerRepository(collection, logger)
-	productRepo := _repo.InitProductRepository(collection, logger)
-	companyRepo := _repo.InitCompanyRepository(collection, logger)
-	daybookRepo := _repo.InitDaybookRepository(collection, logger)
-	daybookDetailRepo := _repo.InitDaybookDetailRepository(collection, logger)
-	documentRepo := _repo.InitDocumentRepository(collection, logger)
-	paymentMethodRepo := _repo.InitPaymentMethodRepository(collection, logger)
-	roleRepo := _repo.InitRoleRepository(collection, logger)
-	materialRepo := _repo.InitMaterialRepository(collection, logger)
+	repo := mRepo.Repository{
+		User:          _repo.InitUserRepository(collection, logger),
+		Account:       _repo.InitAccountRepository(collection, logger),
+		Supplier:      _repo.InitSupplierRepository(collection, logger),
+		Customer:      _repo.InitCustomerRepository(collection, logger),
+		Product:       _repo.InitProductRepository(collection, logger),
+		Company:       _repo.InitCompanyRepository(collection, logger),
+		Daybook:       _repo.InitDaybookRepository(collection, logger),
+		DaybookDetail: _repo.InitDaybookDetailRepository(collection, logger),
+		Document:      _repo.InitDocumentRepository(collection, logger),
+		PaymentMethod: _repo.InitPaymentMethodRepository(collection, logger),
+		Role:          _repo.InitRoleRepository(collection, logger),
+		Material:      _repo.InitMaterialRepository(collection, logger),
+	}
 
 	// init service
-	userService := _service.InitUserService(userRepo, logger)
-	accountService := _service.InitAccountService(accountRepo, logger)
-	supplierService := _service.InitSupplierService(supplierRepo, logger)
-	customerService := _service.InitCustomerService(customerRepo, logger)
-	productService := _service.InitProductService(productRepo, logger)
-	companyService := _service.InitCompanyService(companyRepo, logger)
-	daybookService := _service.InitDaybookService(daybookRepo, daybookDetailRepo, logger)
-	daybookDetailService := _service.InitDaybookDetailService(daybookDetailRepo, daybookRepo, logger)
-	documentService := _service.InitDocumentService(documentRepo, logger)
-	paymentMethodService := _service.InitPaymentMethodService(paymentMethodRepo, logger)
-	roleService := _service.InitRoleService(roleRepo, logger)
-	materialService := _service.InitMaterialService(materialRepo, logger)
+	service := mService.Service{
+		User:          _service.InitUserService(repo, logger),
+		Account:       _service.InitAccountService(repo, logger),
+		Supplier:      _service.InitSupplierService(repo, logger),
+		Customer:      _service.InitCustomerService(repo, logger),
+		Product:       _service.InitProductService(repo, logger),
+		Company:       _service.InitCompanyService(repo, logger),
+		Daybook:       _service.InitDaybookService(repo, logger),
+		DaybookDetail: _service.InitDaybookDetailService(repo, logger),
+		Document:      _service.InitDocumentService(repo, logger),
+		PaymentMethod: _service.InitPaymentMethodService(repo, logger),
+		Role:          _service.InitRoleService(repo, logger),
+		Material:      _service.InitMaterialService(repo, logger),
+	}
 
 	// init handler
-	userHandler := _handler.InitUserHandler(userService, logger)
-	accountHandler := _handler.InitAccountHandler(accountService, logger)
-	supplierHandler := _handler.InitSupplierHandler(supplierService, logger)
-	customerHandler := _handler.InitCustomerHandler(customerService, logger)
-	productHandler := _handler.InitProductHandler(productService, logger)
-	companyHandler := _handler.InitCompanyHandler(companyService, logger)
-	daybookHandler := _handler.InitDaybookHandler(daybookService, logger)
-	daybookDetailHandler := _handler.InitDaybookDetailHandler(daybookDetailService, logger)
-	documentHandler := _handler.InitDocumentHandler(documentService, logger)
-	paymentMethodHandler := _handler.InitPaymentMethodHandler(paymentMethodService, logger)
-	roleHandler := _handler.InitRoleHandler(roleService, logger)
-	materialHandler := _handler.InitMaterialHandler(materialService, logger)
-
-	return Handlers{
-		authToken:            jwtauth.New("HS256", []byte(os.Getenv("JWT_SECRET")), nil),
-		userHandler:          userHandler,
-		accountHandler:       accountHandler,
-		supplierHandler:      supplierHandler,
-		customerHandler:      customerHandler,
-		productHandler:       productHandler,
-		companyHandler:       companyHandler,
-		daybookHandler:       daybookHandler,
-		daybookDetailHandler: daybookDetailHandler,
-		documentHandler:      documentHandler,
-		paymentMethodHandler: paymentMethodHandler,
-		roleHandler:          roleHandler,
-		materialHandler:      materialHandler,
+	handler := mHandler.Handler{
+		AuthToken:     jwtauth.New("HS256", []byte(os.Getenv("JWT_SECRET")), nil),
+		User:          _handler.InitUserHandler(service, logger),
+		Account:       _handler.InitAccountHandler(service, logger),
+		Supplier:      _handler.InitSupplierHandler(service, logger),
+		Customer:      _handler.InitCustomerHandler(service, logger),
+		Product:       _handler.InitProductHandler(service, logger),
+		Company:       _handler.InitCompanyHandler(service, logger),
+		Daybook:       _handler.InitDaybookHandler(service, logger),
+		DaybookDetail: _handler.InitDaybookDetailHandler(service, logger),
+		Document:      _handler.InitDocumentHandler(service, logger),
+		PaymentMethod: _handler.InitPaymentMethodHandler(service, logger),
+		Role:          _handler.InitRoleHandler(service, logger),
+		Material:      _handler.InitMaterialHandler(service, logger),
 	}
+
+	return handler
 }

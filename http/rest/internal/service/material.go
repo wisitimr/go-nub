@@ -19,9 +19,9 @@ type materialService struct {
 	logger       *logrus.Logger
 }
 
-func InitMaterialService(materialRepo mRepo.MaterialRepository, logger *logrus.Logger) mService.MaterialService {
+func InitMaterialService(repo mRepo.Repository, logger *logrus.Logger) mService.MaterialService {
 	return &materialService{
-		materialRepo: materialRepo,
+		materialRepo: repo.Material,
 		logger:       logger,
 	}
 }

@@ -18,9 +18,9 @@ type paymentMethodHandler struct {
 	mRes.ResponseDto
 }
 
-func InitPaymentMethodHandler(paymentMethodService mService.PaymentMethodService, logger *logrus.Logger) mHandler.PaymentMethodHandler {
+func InitPaymentMethodHandler(service mService.Service, logger *logrus.Logger) mHandler.PaymentMethodHandler {
 	return paymentMethodHandler{
-		paymentMethodService: paymentMethodService,
+		paymentMethodService: service.PaymentMethod,
 		logger:               logger,
 	}
 }

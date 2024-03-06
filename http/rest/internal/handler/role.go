@@ -18,9 +18,9 @@ type roleHandler struct {
 	mRes.ResponseDto
 }
 
-func InitRoleHandler(roleService mService.RoleService, logger *logrus.Logger) mHandler.RoleHandler {
+func InitRoleHandler(service mService.Service, logger *logrus.Logger) mHandler.RoleHandler {
 	return roleHandler{
-		roleService: roleService,
+		roleService: service.Role,
 		logger:      logger,
 	}
 }

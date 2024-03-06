@@ -18,9 +18,9 @@ type companyHandler struct {
 	mRes.ResponseDto
 }
 
-func InitCompanyHandler(companyService mService.CompanyService, logger *logrus.Logger) mHandler.CompanyHandler {
+func InitCompanyHandler(service mService.Service, logger *logrus.Logger) mHandler.CompanyHandler {
 	return companyHandler{
-		companyService: companyService,
+		companyService: service.Company,
 		logger:         logger,
 	}
 }

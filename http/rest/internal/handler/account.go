@@ -18,9 +18,9 @@ type accountHandler struct {
 	mRes.ResponseDto
 }
 
-func InitAccountHandler(accountService mService.AccountService, logger *logrus.Logger) mHandler.AccountHandler {
+func InitAccountHandler(service mService.Service, logger *logrus.Logger) mHandler.AccountHandler {
 	return accountHandler{
-		accountService: accountService,
+		accountService: service.Account,
 		logger:         logger,
 	}
 }

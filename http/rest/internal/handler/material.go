@@ -18,9 +18,9 @@ type materialHandler struct {
 	mRes.ResponseDto
 }
 
-func InitMaterialHandler(materialService mService.MaterialService, logger *logrus.Logger) mHandler.MaterialHandler {
+func InitMaterialHandler(service mService.Service, logger *logrus.Logger) mHandler.MaterialHandler {
 	return materialHandler{
-		materialService: materialService,
+		materialService: service.Material,
 		logger:          logger,
 	}
 }

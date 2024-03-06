@@ -18,9 +18,9 @@ type roleService struct {
 	logger   *logrus.Logger
 }
 
-func InitRoleService(roleRepo mRepo.RoleRepository, logger *logrus.Logger) mService.RoleService {
+func InitRoleService(repo mRepo.Repository, logger *logrus.Logger) mService.RoleService {
 	return &roleService{
-		roleRepo: roleRepo,
+		roleRepo: repo.Role,
 		logger:   logger,
 	}
 }

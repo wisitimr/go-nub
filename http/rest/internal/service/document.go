@@ -18,9 +18,9 @@ type documentService struct {
 	logger       *logrus.Logger
 }
 
-func InitDocumentService(documentRepo mRepo.DocumentRepository, logger *logrus.Logger) mService.DocumentService {
+func InitDocumentService(repo mRepo.Repository, logger *logrus.Logger) mService.DocumentService {
 	return &documentService{
-		documentRepo: documentRepo,
+		documentRepo: repo.Document,
 		logger:       logger,
 	}
 }

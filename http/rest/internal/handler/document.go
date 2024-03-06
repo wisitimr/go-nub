@@ -18,9 +18,9 @@ type documentHandler struct {
 	mRes.ResponseDto
 }
 
-func InitDocumentHandler(documentService mService.DocumentService, logger *logrus.Logger) mHandler.DocumentHandler {
+func InitDocumentHandler(service mService.Service, logger *logrus.Logger) mHandler.DocumentHandler {
 	return documentHandler{
-		documentService: documentService,
+		documentService: service.Document,
 		logger:          logger,
 	}
 }

@@ -19,9 +19,9 @@ type accountService struct {
 	logger      *logrus.Logger
 }
 
-func InitAccountService(accountRepo mRepo.AccountRepository, logger *logrus.Logger) mService.AccountService {
+func InitAccountService(repo mRepo.Repository, logger *logrus.Logger) mService.AccountService {
 	return &accountService{
-		accountRepo: accountRepo,
+		accountRepo: repo.Account,
 		logger:      logger,
 	}
 }

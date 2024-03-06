@@ -79,22 +79,41 @@ func (r daybookRepository) FindAll(ctx context.Context, query map[string][]strin
 	const (
 		layoutISO = "2006-01-02T15:04:05.000Z"
 	)
-	if query["transactionDate.gte"] != nil && query["transactionDate.lt"] != nil {
-		from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
-		to, _ := time.Parse(layoutISO, query["transactionDate.lt"][0])
-		filter["transactionDate"] = bson.M{
-			"$gte": from,
-			"$lt":  to,
-		}
-	} else if query["transactionDate.gte"] != nil {
-		from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
-		filter["transactionDate"] = bson.M{
-			"$gte": from,
-		}
-	} else if query["transactionDate.lt"] != nil {
-		to, _ := time.Parse(layoutISO, query["transactionDate.lt"][0])
-		filter["transactionDate"] = bson.M{
-			"$lt": to,
+	if query["transactionDate"] != nil {
+		d, _ := time.Parse(layoutISO, query["transactionDate"][0])
+		filter["transactionDate"] = d
+	} else {
+		if query["transactionDate.gte"] != nil && query["transactionDate.lte"] != nil {
+			from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
+			to, _ := time.Parse(layoutISO, query["transactionDate.lte"][0])
+			filter["transactionDate"] = bson.M{
+				"$gte": from,
+				"$lte": to,
+			}
+		} else if query["transactionDate.gte"] != nil && query["transactionDate.lt"] != nil {
+			from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
+			to, _ := time.Parse(layoutISO, query["transactionDate.lt"][0])
+			filter["transactionDate"] = bson.M{
+				"$gte": from,
+				"$lt":  to,
+			}
+		} else if query["transactionDate.gt"] != nil && query["transactionDate.lte"] != nil {
+			from, _ := time.Parse(layoutISO, query["transactionDate.gt"][0])
+			to, _ := time.Parse(layoutISO, query["transactionDate.lte"][0])
+			filter["transactionDate"] = bson.M{
+				"$gt":  from,
+				"$lte": to,
+			}
+		} else if query["transactionDate.gte"] != nil {
+			from, _ := time.Parse(layoutISO, query["transactionDate.gte"][0])
+			filter["transactionDate"] = bson.M{
+				"$gte": from,
+			}
+		} else if query["transactionDate.lte"] != nil {
+			to, _ := time.Parse(layoutISO, query["transactionDate.lte"][0])
+			filter["transactionDate"] = bson.M{
+				"$lte": to,
+			}
 		}
 	}
 	if len(filter) > 1 {
@@ -208,7 +227,7 @@ func (r daybookRepository) FindById(ctx context.Context, id string) (mDaybook.Da
 	result.UpdatedBy = daybook.UpdatedBy
 	result.UpdatedAt = daybook.UpdatedAt
 	outDaybookDetails := []mDaybook.OutDaybookDetails{}
-	daybookDetails := []mDaybook.DaybookDetails{}
+	daybookDetails := []mDaybook.DaybookDetail{}
 	ch := make(chan mDaybook.OutDaybookDetails)
 	for _, doc := range daybook.DaybookDetails {
 		go func(ch chan mDaybook.OutDaybookDetails, doc primitive.ObjectID) {
@@ -252,7 +271,7 @@ func (r daybookRepository) FindById(ctx context.Context, id string) (mDaybook.Da
 		return outDaybookDetails[i].CreatedAt.Before(outDaybookDetails[j].CreatedAt)
 	})
 	for _, row := range outDaybookDetails {
-		daybookDetail := mDaybook.DaybookDetails{}
+		daybookDetail := mDaybook.DaybookDetail{}
 		daybookDetail.Id = row.Id
 		daybookDetail.Name = row.Name
 		daybookDetail.Type = row.Type
@@ -396,9 +415,9 @@ func (r daybookRepository) FindByIdForExcel(ctx context.Context, id string) (mDa
 	sort.Slice(daybook.DaybookDetails[:], func(i, j int) bool {
 		return daybook.DaybookDetails[i].CreatedAt.Before(daybook.DaybookDetails[j].CreatedAt)
 	})
-	daybookDetails := []mDaybook.DaybookDetails{}
+	daybookDetails := []mDaybook.DaybookDetail{}
 	for _, row := range daybook.DaybookDetails {
-		daybookDetail := mDaybook.DaybookDetails{}
+		daybookDetail := mDaybook.DaybookDetail{}
 		daybookDetail.Id = row.Id
 		daybookDetail.Name = row.Name
 		daybookDetail.Type = row.Type
@@ -460,4 +479,91 @@ func (r daybookRepository) Update(ctx context.Context, payload mDaybook.Daybook)
 		return updated, err
 	}
 	return updated, nil
+}
+
+func (r daybookRepository) GenerateFinancialStatement(ctx context.Context, company string) ([]mDaybook.DaybookFinancialStatement, error) {
+	var accounts []mDaybook.DaybookFinancialStatement
+	doc, err := primitive.ObjectIDFromHex(company)
+	if err != nil {
+		r.logger.Error(err)
+	}
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{"company": doc},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "accounts",
+				"localField":   "account",
+				"foreignField": "_id",
+				"as":           "account",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$account",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "daybooks",
+				"localField":   "daybook",
+				"foreignField": "_id",
+				"as":           "daybook",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$daybook",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$account",
+				"daybookDetails": bson.M{
+					"$addToSet": "$$ROOT",
+				},
+			},
+		},
+		{
+			"$addFields": bson.M{
+				"id":          "$_id._id",
+				"code":        "$_id.code",
+				"name":        "$_id.name",
+				"description": "$_id.description",
+				"type":        "$_id.type",
+				"company":     "$_id.company",
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "companies",
+				"localField":   "company",
+				"foreignField": "_id",
+				"as":           "company",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$company",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$sort": bson.M{"code": 1},
+		},
+	}
+
+	cur, err := r.Collection.DaybookDetail.Aggregate(ctx, pipeline)
+	if err != nil {
+		r.logger.Error(err)
+	}
+	// var test []bson.M
+	if err = cur.All(ctx, &accounts); err != nil {
+		r.logger.Error(err)
+	}
+	// r.logger.Error(accounts)
+	return accounts, nil
 }

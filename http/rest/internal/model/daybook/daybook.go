@@ -79,7 +79,7 @@ type DaybookResponse struct {
 	Customer          *primitive.ObjectID `bson:"customer" json:"customer"`
 	Supplier          *primitive.ObjectID `bson:"supplier" json:"supplier"`
 	PaymentMethod     *primitive.ObjectID `bson:"paymentMethod" json:"paymentMethod"`
-	DaybookDetails    []DaybookDetails    `bson:"daybookDetails" json:"daybookDetails"`
+	DaybookDetails    []DaybookDetail     `bson:"daybookDetails" json:"daybookDetails"`
 	DebitTotalAmount  float64             `bson:"debitTotalAmount" json:"debitTotalAmount"`
 	CreditTotalAmount float64             `bson:"creditTotalAmount" json:"creditTotalAmount"`
 	CreatedBy         primitive.ObjectID  `bson:"createdBy" json:"createdBy"`
@@ -89,22 +89,48 @@ type DaybookResponse struct {
 }
 
 type DaybookExpand struct {
-	Id                primitive.ObjectID  `bson:"_id" json:"id"`
-	Number            string              `bson:"number" json:"number"`
-	Invoice           string              `bson:"invoice" json:"invoice"`
-	Document          Document            `bson:"document" json:"document"`
-	TransactionDate   time.Time           `bson:"transactionDate" json:"transactionDate"`
-	Company           Company             `bson:"company" json:"company"`
-	Customer          *Customer           `bson:"customer" json:"customer"`
-	Supplier          *Supplier           `bson:"supplier" json:"supplier"`
-	PaymentMethod     *primitive.ObjectID `bson:"paymentMethod" json:"paymentMethod"`
-	DaybookDetails    []DaybookDetails    `bson:"daybookDetails" json:"daybookDetails"`
-	DebitTotalAmount  float64             `bson:"debitTotalAmount" json:"debitTotalAmount"`
-	CreditTotalAmount float64             `bson:"creditTotalAmount" json:"creditTotalAmount"`
-	CreatedBy         primitive.ObjectID  `bson:"createdBy" json:"createdBy"`
-	CreatedAt         time.Time           `bson:"createdAt" json:"createdAt"`
-	UpdatedBy         primitive.ObjectID  `bson:"updatedBy" json:"updatedBy"`
-	UpdatedAt         time.Time           `bson:"updatedAt" json:"updatedAt"`
+	Id                primitive.ObjectID `bson:"_id" json:"id"`
+	Number            string             `bson:"number" json:"number"`
+	Invoice           string             `bson:"invoice" json:"invoice"`
+	Document          Document           `bson:"document" json:"document"`
+	TransactionDate   time.Time          `bson:"transactionDate" json:"transactionDate"`
+	Company           Company            `bson:"company" json:"company"`
+	Customer          *Customer          `bson:"customer" json:"customer"`
+	Supplier          *Supplier          `bson:"supplier" json:"supplier"`
+	PaymentMethod     primitive.ObjectID `bson:"paymentMethod" json:"paymentMethod"`
+	DaybookDetails    []DaybookDetail    `bson:"daybookDetails" json:"daybookDetails"`
+	DebitTotalAmount  float64            `bson:"debitTotalAmount" json:"debitTotalAmount"`
+	CreditTotalAmount float64            `bson:"creditTotalAmount" json:"creditTotalAmount"`
+	CreatedBy         primitive.ObjectID `bson:"createdBy" json:"createdBy"`
+	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedBy         primitive.ObjectID `bson:"updatedBy" json:"updatedBy"`
+	UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
+}
+
+type DaybookFinancialStatement struct {
+	// Id             AccountFinState        `bson:"_id" json:"account"`
+	Id             string                 `bson:"id" json:"id"`
+	Code           string                 `bson:"code" json:"code"`
+	Name           string                 `bson:"name" json:"name"`
+	Description    string                 `bson:"description" json:"description"`
+	Type           string                 `bson:"type" json:"type"`
+	Company        Company                `bson:"company" json:"company"`
+	DaybookDetails []AccountDaybookDetail `bson:"daybookDetails" json:"daybookDetails"`
+	// Number            string             `bson:"number" json:"number"`
+	// Invoice           string             `bson:"invoice" json:"invoice"`
+	// Document          Document           `bson:"document" json:"document"`
+	// TransactionDate   time.Time          `bson:"transactionDate" json:"transactionDate"`
+	// Company           Company            `bson:"company" json:"company"`
+	// Customer          *Customer          `bson:"customer" json:"customer"`
+	// Supplier          *Supplier          `bson:"supplier" json:"supplier"`
+	// PaymentMethod     primitive.ObjectID `bson:"paymentMethod" json:"paymentMethod"`
+	// DaybookDetails    []DaybookDetail   `bson:"daybookDetails" json:"daybookDetails"`
+	// DebitTotalAmount  float64            `bson:"debitTotalAmount" json:"debitTotalAmount"`
+	// CreditTotalAmount float64            `bson:"creditTotalAmount" json:"creditTotalAmount"`
+	// CreatedBy         primitive.ObjectID `bson:"createdBy" json:"createdBy"`
+	// CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
+	// UpdatedBy         primitive.ObjectID `bson:"updatedBy" json:"updatedBy"`
+	// UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 type Customer struct {
@@ -146,7 +172,7 @@ type OutDaybookDetails struct {
 	UpdatedAt time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
-type DaybookDetails struct {
+type DaybookDetail struct {
 	Id        primitive.ObjectID `bson:"_id" json:"id"`
 	Name      string             `bson:"name" json:"name"`
 	Type      string             `bson:"type" json:"type"`
@@ -158,6 +184,14 @@ type DaybookDetails struct {
 	UpdatedAt time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
+type AccountDaybookDetail struct {
+	Id      primitive.ObjectID `bson:"_id" json:"id"`
+	Name    string             `bson:"name" json:"name"`
+	Type    string             `bson:"type" json:"type"`
+	Amount  float64            `bson:"amount" json:"amount"`
+	Daybook AccountDaybook     `bson:"daybook" json:"daybook"`
+}
+
 type Account struct {
 	Id          primitive.ObjectID `bson:"_id" json:"id"`
 	Code        string             `bson:"code" json:"code"`
@@ -165,6 +199,26 @@ type Account struct {
 	Description string             `bson:"description" json:"description"`
 	Type        string             `bson:"type" json:"type"`
 	Company     primitive.ObjectID `bson:"company" json:"company"`
+}
+
+type AccountFinState struct {
+	Id          primitive.ObjectID `bson:"_id" json:"id"`
+	Code        string             `bson:"code" json:"code"`
+	Name        string             `bson:"name" json:"name"`
+	Description string             `bson:"description" json:"description"`
+	Type        string             `bson:"type" json:"type"`
+}
+
+type AccountDaybook struct {
+	Id              primitive.ObjectID  `bson:"_id" json:"id"`
+	Number          string              `bson:"number" json:"number"`
+	Invoice         string              `bson:"invoice" json:"invoice"`
+	Document        primitive.ObjectID  `bson:"document" json:"document"`
+	TransactionDate time.Time           `bson:"transactionDate" json:"transactionDate"`
+	Company         primitive.ObjectID  `bson:"company" json:"company"`
+	Customer        *primitive.ObjectID `bson:"customer" json:"customer"`
+	Supplier        *primitive.ObjectID `bson:"supplier" json:"supplier"`
+	PaymentMethod   *primitive.ObjectID `bson:"paymentMethod" json:"paymentMethod"`
 }
 
 type Document struct {

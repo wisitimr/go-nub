@@ -18,9 +18,9 @@ type DaybookDetailHandler struct {
 	mRes.ResponseDto
 }
 
-func InitDaybookDetailHandler(DaybookDetailService mService.DaybookDetailService, logger *logrus.Logger) mHandler.DaybookDetailHandler {
+func InitDaybookDetailHandler(service mService.Service, logger *logrus.Logger) mHandler.DaybookDetailHandler {
 	return DaybookDetailHandler{
-		DaybookDetailService: DaybookDetailService,
+		DaybookDetailService: service.DaybookDetail,
 		logger:               logger,
 	}
 }

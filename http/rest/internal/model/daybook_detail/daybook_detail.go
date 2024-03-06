@@ -13,6 +13,7 @@ type DaybookDetail struct {
 	Amount    float64            `bson:"amount" json:"amount"`
 	Account   primitive.ObjectID `bson:"account" json:"account"`
 	Daybook   primitive.ObjectID `bson:"daybook" json:"daybook"`
+	Company   primitive.ObjectID `bson:"company" json:"company"`
 	CreatedBy primitive.ObjectID `bson:"createdBy" json:"createdBy"`
 	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedBy primitive.ObjectID `bson:"updatedBy" json:"updatedBy"`

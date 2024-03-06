@@ -18,9 +18,9 @@ type daybookHandler struct {
 	mRes.ResponseDto
 }
 
-func InitDaybookHandler(daybookService mService.DaybookService, logger *logrus.Logger) mHandler.DaybookHandler {
+func InitDaybookHandler(service mService.Service, logger *logrus.Logger) mHandler.DaybookHandler {
 	return daybookHandler{
-		daybookService: daybookService,
+		daybookService: service.Daybook,
 		logger:         logger,
 	}
 }
@@ -90,4 +90,13 @@ func (h daybookHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Respond(w, r, res, http.StatusOK)
+}
+
+func (h daybookHandler) GenerateFinancialStatement(w http.ResponseWriter, r *http.Request) {
+	f, err := h.daybookService.GenerateFinancialStatement(r.Context(), chi.URLParam(r, "company"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+	h.Respond(w, r, f, http.StatusOK)
 }

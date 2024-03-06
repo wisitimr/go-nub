@@ -9,6 +9,7 @@ type DaybookHandler interface {
 	FindAll(w http.ResponseWriter, r *http.Request)
 	FindById(w http.ResponseWriter, r *http.Request)
 	GenerateExcel(w http.ResponseWriter, r *http.Request)
+	GenerateFinancialStatement(w http.ResponseWriter, r *http.Request)
 	Create(w http.ResponseWriter, r *http.Request)
 	Update(w http.ResponseWriter, r *http.Request)
 }

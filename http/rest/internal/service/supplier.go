@@ -19,9 +19,9 @@ type supplierService struct {
 	logger       *logrus.Logger
 }
 
-func InitSupplierService(supplierRepo mRepo.SupplierRepository, logger *logrus.Logger) mService.SupplierService {
+func InitSupplierService(repo mRepo.Repository, logger *logrus.Logger) mService.SupplierService {
 	return &supplierService{
-		supplierRepo: supplierRepo,
+		supplierRepo: repo.Supplier,
 		logger:       logger,
 	}
 }

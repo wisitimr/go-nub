@@ -20,10 +20,10 @@ type daybookDetailService struct {
 	logger            *logrus.Logger
 }
 
-func InitDaybookDetailService(daybookDetailRepo mRepo.DaybookDetailRepository, daybookRepo mRepo.DaybookRepository, logger *logrus.Logger) mService.DaybookDetailService {
+func InitDaybookDetailService(repo mRepo.Repository, logger *logrus.Logger) mService.DaybookDetailService {
 	return &daybookDetailService{
-		daybookRepo:       daybookRepo,
-		daybookDetailRepo: daybookDetailRepo,
+		daybookRepo:       repo.Daybook,
+		daybookDetailRepo: repo.DaybookDetail,
 		logger:            logger,
 	}
 }
@@ -79,6 +79,7 @@ func (s daybookDetailService) Create(ctx context.Context, payload mDaybookDetail
 	newDaybook.Company = daybook.Company
 	newDaybook.Supplier = daybook.Supplier
 	newDaybook.Customer = daybook.Customer
+	newDaybook.PaymentMethod = daybook.PaymentMethod
 	newDaybook.DaybookDetails = daybookDetails
 	newDaybook.UpdatedBy = user.Id
 	newDaybook.UpdatedAt = time.Now()

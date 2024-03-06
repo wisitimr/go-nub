@@ -18,9 +18,9 @@ type paymentMethodService struct {
 	logger            *logrus.Logger
 }
 
-func InitPaymentMethodService(paymentMethodRepo mRepo.PaymentMethodRepository, logger *logrus.Logger) mService.PaymentMethodService {
+func InitPaymentMethodService(repo mRepo.Repository, logger *logrus.Logger) mService.PaymentMethodService {
 	return &paymentMethodService{
-		paymentMethodRepo: paymentMethodRepo,
+		paymentMethodRepo: repo.PaymentMethod,
 		logger:            logger,
 	}
 }

@@ -18,9 +18,9 @@ type supplierHandler struct {
 	mRes.ResponseDto
 }
 
-func InitSupplierHandler(supplierService mService.SupplierService, logger *logrus.Logger) mHandler.SupplierHandler {
+func InitSupplierHandler(service mService.Service, logger *logrus.Logger) mHandler.SupplierHandler {
 	return supplierHandler{
-		supplierService: supplierService,
+		supplierService: service.Supplier,
 		logger:          logger,
 	}
 }

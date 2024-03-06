@@ -19,9 +19,9 @@ type productService struct {
 	logger      *logrus.Logger
 }
 
-func InitProductService(productRepo mRepo.ProductRepository, logger *logrus.Logger) mService.ProductService {
+func InitProductService(repo mRepo.Repository, logger *logrus.Logger) mService.ProductService {
 	return &productService{
-		productRepo: productRepo,
+		productRepo: repo.Product,
 		logger:      logger,
 	}
 }
