@@ -5,7 +5,9 @@ import (
 	mCollection "findigitalservice/http/rest/internal/model/collection"
 	mDaybook "findigitalservice/http/rest/internal/model/daybook"
 	mRepo "findigitalservice/http/rest/internal/model/repository"
+	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -487,10 +489,21 @@ func (r daybookRepository) GenerateFinancialStatement(ctx context.Context, compa
 	if err != nil {
 		r.logger.Error(err)
 	}
+	const (
+		layoutISO = "2006-01-02T15:04:05.000Z"
+	)
+	yearInt, err := strconv.Atoi(year)
+	if err != nil {
+		return nil, err
+	}
+	from, _ := time.Parse(layoutISO, fmt.Sprintf("%d-01-01T00:00:00.000Z", yearInt))
+	to, _ := time.Parse(layoutISO, fmt.Sprintf("%d-01-01T00:00:00.000Z", yearInt+1))
+	filter := bson.M{"company": doc, "daybook.transactionDate": bson.M{
+		"$gte": from,
+		"$lt":  to,
+	}}
+	r.logger.Error(filter)
 	pipeline := []bson.M{
-		{
-			"$match": bson.M{"company": doc},
-		},
 		{
 			"$lookup": bson.M{
 				"from":         "accounts",
@@ -512,6 +525,9 @@ func (r daybookRepository) GenerateFinancialStatement(ctx context.Context, compa
 				"foreignField": "_id",
 				"as":           "daybook",
 			},
+		},
+		{
+			"$match": filter,
 		},
 		{
 			"$unwind": bson.M{
