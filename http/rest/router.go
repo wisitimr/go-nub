@@ -76,6 +76,14 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Get("/count", h.Account.Count)
 				r.Delete("/{id}", h.Account.Delete)
 			})
+			r.Route("/forward", func(r chi.Router) {
+				r.Get("/", h.ForwardAccount.FindAll)
+				r.Get("/{id}", h.ForwardAccount.FindById)
+				r.Post("/", h.ForwardAccount.Create)
+				r.Put("/{id}", h.ForwardAccount.Update)
+				r.Get("/count", h.ForwardAccount.Count)
+				r.Delete("/{id}", h.ForwardAccount.Delete)
+			})
 			r.Route("/supplier", func(r chi.Router) {
 				r.Get("/", h.Supplier.FindAll)
 				r.Get("/{id}", h.Supplier.FindById)
@@ -158,66 +166,70 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 func initRouter(db *mongo.Database, logger *logrus.Logger) mHandler.Handler {
 	// init collection
 	collection := mCollection.Collection{
-		User:          db.Collection("users"),
-		Account:       db.Collection("accounts"),
-		Supplier:      db.Collection("suppliers"),
-		Customer:      db.Collection("customers"),
-		Document:      db.Collection("documents"),
-		PaymentMethod: db.Collection("payment_methods"),
-		Product:       db.Collection("products"),
-		Company:       db.Collection("companies"),
-		Daybook:       db.Collection("daybooks"),
-		DaybookDetail: db.Collection("daybook_details"),
-		Role:          db.Collection("roles"),
-		Material:      db.Collection("materials"),
+		User:           db.Collection("users"),
+		Account:        db.Collection("accounts"),
+		ForwardAccount: db.Collection("forward_accounts"),
+		Supplier:       db.Collection("suppliers"),
+		Customer:       db.Collection("customers"),
+		Document:       db.Collection("documents"),
+		PaymentMethod:  db.Collection("payment_methods"),
+		Product:        db.Collection("products"),
+		Company:        db.Collection("companies"),
+		Daybook:        db.Collection("daybooks"),
+		DaybookDetail:  db.Collection("daybook_details"),
+		Role:           db.Collection("roles"),
+		Material:       db.Collection("materials"),
 	}
 	// init repository
 	repo := mRepo.Repository{
-		User:          _repo.InitUserRepository(collection, logger),
-		Account:       _repo.InitAccountRepository(collection, logger),
-		Supplier:      _repo.InitSupplierRepository(collection, logger),
-		Customer:      _repo.InitCustomerRepository(collection, logger),
-		Product:       _repo.InitProductRepository(collection, logger),
-		Company:       _repo.InitCompanyRepository(collection, logger),
-		Daybook:       _repo.InitDaybookRepository(collection, logger),
-		DaybookDetail: _repo.InitDaybookDetailRepository(collection, logger),
-		Document:      _repo.InitDocumentRepository(collection, logger),
-		PaymentMethod: _repo.InitPaymentMethodRepository(collection, logger),
-		Role:          _repo.InitRoleRepository(collection, logger),
-		Material:      _repo.InitMaterialRepository(collection, logger),
+		User:           _repo.InitUserRepository(collection, logger),
+		Account:        _repo.InitAccountRepository(collection, logger),
+		ForwardAccount: _repo.InitForwardAccountRepository(collection, logger),
+		Supplier:       _repo.InitSupplierRepository(collection, logger),
+		Customer:       _repo.InitCustomerRepository(collection, logger),
+		Product:        _repo.InitProductRepository(collection, logger),
+		Company:        _repo.InitCompanyRepository(collection, logger),
+		Daybook:        _repo.InitDaybookRepository(collection, logger),
+		DaybookDetail:  _repo.InitDaybookDetailRepository(collection, logger),
+		Document:       _repo.InitDocumentRepository(collection, logger),
+		PaymentMethod:  _repo.InitPaymentMethodRepository(collection, logger),
+		Role:           _repo.InitRoleRepository(collection, logger),
+		Material:       _repo.InitMaterialRepository(collection, logger),
 	}
 
 	// init service
 	service := mService.Service{
-		User:          _service.InitUserService(repo, logger),
-		Account:       _service.InitAccountService(repo, logger),
-		Supplier:      _service.InitSupplierService(repo, logger),
-		Customer:      _service.InitCustomerService(repo, logger),
-		Product:       _service.InitProductService(repo, logger),
-		Company:       _service.InitCompanyService(repo, logger),
-		Daybook:       _service.InitDaybookService(repo, logger),
-		DaybookDetail: _service.InitDaybookDetailService(repo, logger),
-		Document:      _service.InitDocumentService(repo, logger),
-		PaymentMethod: _service.InitPaymentMethodService(repo, logger),
-		Role:          _service.InitRoleService(repo, logger),
-		Material:      _service.InitMaterialService(repo, logger),
+		User:           _service.InitUserService(repo, logger),
+		Account:        _service.InitAccountService(repo, logger),
+		ForwardAccount: _service.InitForwardAccountService(repo, logger),
+		Supplier:       _service.InitSupplierService(repo, logger),
+		Customer:       _service.InitCustomerService(repo, logger),
+		Product:        _service.InitProductService(repo, logger),
+		Company:        _service.InitCompanyService(repo, logger),
+		Daybook:        _service.InitDaybookService(repo, logger),
+		DaybookDetail:  _service.InitDaybookDetailService(repo, logger),
+		Document:       _service.InitDocumentService(repo, logger),
+		PaymentMethod:  _service.InitPaymentMethodService(repo, logger),
+		Role:           _service.InitRoleService(repo, logger),
+		Material:       _service.InitMaterialService(repo, logger),
 	}
 
 	// init handler
 	handler := mHandler.Handler{
-		AuthToken:     jwtauth.New("HS256", []byte(os.Getenv("JWT_SECRET")), nil),
-		User:          _handler.InitUserHandler(service, logger),
-		Account:       _handler.InitAccountHandler(service, logger),
-		Supplier:      _handler.InitSupplierHandler(service, logger),
-		Customer:      _handler.InitCustomerHandler(service, logger),
-		Product:       _handler.InitProductHandler(service, logger),
-		Company:       _handler.InitCompanyHandler(service, logger),
-		Daybook:       _handler.InitDaybookHandler(service, logger),
-		DaybookDetail: _handler.InitDaybookDetailHandler(service, logger),
-		Document:      _handler.InitDocumentHandler(service, logger),
-		PaymentMethod: _handler.InitPaymentMethodHandler(service, logger),
-		Role:          _handler.InitRoleHandler(service, logger),
-		Material:      _handler.InitMaterialHandler(service, logger),
+		AuthToken:      jwtauth.New("HS256", []byte(os.Getenv("JWT_SECRET")), nil),
+		User:           _handler.InitUserHandler(service, logger),
+		Account:        _handler.InitAccountHandler(service, logger),
+		ForwardAccount: _handler.InitForwardAccountHandler(service, logger),
+		Supplier:       _handler.InitSupplierHandler(service, logger),
+		Customer:       _handler.InitCustomerHandler(service, logger),
+		Product:        _handler.InitProductHandler(service, logger),
+		Company:        _handler.InitCompanyHandler(service, logger),
+		Daybook:        _handler.InitDaybookHandler(service, logger),
+		DaybookDetail:  _handler.InitDaybookDetailHandler(service, logger),
+		Document:       _handler.InitDocumentHandler(service, logger),
+		PaymentMethod:  _handler.InitPaymentMethodHandler(service, logger),
+		Role:           _handler.InitRoleHandler(service, logger),
+		Material:       _handler.InitMaterialHandler(service, logger),
 	}
 
 	return handler

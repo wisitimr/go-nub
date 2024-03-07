@@ -63,6 +63,5 @@ func UserLogin(ctx context.Context, logger *logrus.Logger) (mUser.User, error) {
 		logger.Error("err Unmarshal: ", err)
 		return u, err
 	}
-	logger.Info("UserLogin : ", u)
 	return u, nil
 }

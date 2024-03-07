@@ -226,3 +226,22 @@ type Document struct {
 	Code string             `bson:"code" json:"code"`
 	Name string             `bson:"name" json:"name"`
 }
+
+type FinancialStatement struct {
+	Code        string        `json:"code"`
+	Name        string        `json:"name"`
+	MonthDetail []MonthDetail `json:"monthDetail"`
+}
+
+type MonthDetail struct {
+	Month         string          `json:"month"`
+	AccountDetail []AccountDetail `json:"accountDetail"`
+}
+
+type AccountDetail struct {
+	Date        int     `json:"date"`
+	Description string  `json:"description"`
+	Number      string  `json:"number"`
+	AmountDr    float64 `json:"amountDr"`
+	AmountCr    float64 `json:"amountCr"`
+}

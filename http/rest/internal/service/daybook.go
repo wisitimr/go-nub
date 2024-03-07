@@ -5,6 +5,7 @@ import (
 	"findigitalservice/http/rest/internal/auth"
 	mDaybook "findigitalservice/http/rest/internal/model/daybook"
 	mDaybookDetail "findigitalservice/http/rest/internal/model/daybook_detail"
+	mForwardAccount "findigitalservice/http/rest/internal/model/forward_account"
 	mRepo "findigitalservice/http/rest/internal/model/repository"
 	mRes "findigitalservice/http/rest/internal/model/response"
 	mService "findigitalservice/http/rest/internal/model/service"
@@ -21,18 +22,20 @@ import (
 )
 
 type daybookService struct {
-	Daybook       mRepo.DaybookRepository
-	PaymentMethod mRepo.PaymentMethodRepository
-	Account       mRepo.AccountRepository
-	logger        *logrus.Logger
+	Daybook        mRepo.DaybookRepository
+	PaymentMethod  mRepo.PaymentMethodRepository
+	Account        mRepo.AccountRepository
+	ForwardAccount mRepo.ForwardAccountRepository
+	logger         *logrus.Logger
 }
 
 func InitDaybookService(repo mRepo.Repository, logger *logrus.Logger) mService.DaybookService {
 	return &daybookService{
-		Daybook:       repo.Daybook,
-		PaymentMethod: repo.PaymentMethod,
-		Account:       repo.Account,
-		logger:        logger,
+		Daybook:        repo.Daybook,
+		PaymentMethod:  repo.PaymentMethod,
+		Account:        repo.Account,
+		ForwardAccount: repo.ForwardAccount,
+		logger:         logger,
 	}
 }
 
@@ -65,7 +68,6 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (*excelize
 	if err != nil {
 		user = mUser.User{}
 	}
-	s.logger.Warn(user)
 	res, err := s.Daybook.FindByIdForExcel(ctx, id)
 	if err != nil {
 		return nil, err
@@ -892,7 +894,15 @@ func (s daybookService) Update(ctx context.Context, id string, payload mDaybook.
 }
 
 func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error) {
+	user, err := auth.UserLogin(ctx, s.logger)
+	if err != nil {
+		user = mUser.User{}
+	}
 	financial, err := s.Daybook.GenerateFinancialStatement(ctx, company, year)
+	if err != nil {
+		return nil, err
+	}
+	yearInt, err := strconv.Atoi(year)
 	if err != nil {
 		return nil, err
 	}
@@ -908,7 +918,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 			s.logger.Error(err)
 		}
 		fm := "_-* #,##0.00_-;-* #,##0.00_-;_-* \"-\"??_-;_-@_-"
-		sheetTB12 := "TB12"
+		sheet := "TB12"
 		// TB12
 		query := make(map[string][]string)
 		query["company"] = append(query["company"], company)
@@ -916,19 +926,15 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 		if err != nil {
 			return nil, err
 		}
-		if len(financial) > 0 {
-			if financial[0].Company.Name != "" {
-				s.logger.Warn(financial[0].Company.Name)
-				xlsx.SetCellValue(sheetTB12, "A1", financial[0].Company.Name)
-			}
-			var fromDate string
-			if len(financial[0].DaybookDetails) > 0 && !financial[0].DaybookDetails[0].Daybook.TransactionDate.IsZero() {
-				year := financial[0].DaybookDetails[0].Daybook.TransactionDate.Format("2006")
-				fromDate = fmt.Sprintf("From Date :  1 Jan %s To  31 December %s", year, year)
-			}
-			s.logger.Error(fromDate)
-			xlsx.SetCellValue(sheetTB12, "A3", fromDate)
+		if financial[0].Company.Name != "" {
+			xlsx.SetCellValue(sheet, "A1", financial[0].Company.Name)
 		}
+		var fromDate string
+		if len(financial[0].DaybookDetails) > 0 && !financial[0].DaybookDetails[0].Daybook.TransactionDate.IsZero() {
+			year := financial[0].DaybookDetails[0].Daybook.TransactionDate.Format("2006")
+			fromDate = fmt.Sprintf("From Date :  1 Jan %s To  31 December %s", year, year)
+		}
+		xlsx.SetCellValue(sheet, "A3", fromDate)
 		row := 7
 		groupCode := 1
 		accountType := ""
@@ -1077,11 +1083,13 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 		var totalAccountEnding []string
 		var sumDr []string
 		var sumCr []string
+		var sumDrTmp float64
+		var sumCrTmp float64
 		var resultNetProfitLoss []string
 		var resultDiffAssetsLiabilitiesOwnerEquity []string
 		var resultDifference []string
-		// var totalForwardingDr []string
-		// var totalForwardingCr []string
+		fwMap := make(map[string]string)
+		var typeList []mDaybook.FinancialStatement
 		for i := 0; i < len(account); i++ {
 			acc := account[i]
 			if accountType == "" {
@@ -1092,7 +1100,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 			if accountFirstNo == groupCode || (accountFirstNo > 5 && accountFirstNo <= 9) {
 				isTotal = false
 				accCode := fmt.Sprintf("A%d", row)
-				xlsx.SetCellValue(sheetTB12, accCode, acc.Code)
+				xlsx.SetCellValue(sheet, accCode, acc.Code)
 				style, err := xlsx.NewStyle(&excelize.Style{
 					Font: &excelize.Font{
 						Family: "TH Sarabun New",
@@ -1112,12 +1120,12 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if err != nil {
 					return nil, err
 				}
-				err = xlsx.SetCellStyle(sheetTB12, accCode, accCode, style)
+				err = xlsx.SetCellStyle(sheet, accCode, accCode, style)
 				if err != nil {
 					return nil, err
 				}
 				accName := fmt.Sprintf("B%d", row)
-				xlsx.SetCellValue(sheetTB12, accName, acc.Name)
+				xlsx.SetCellValue(sheet, accName, acc.Name)
 				style, err = xlsx.NewStyle(&excelize.Style{
 					Font: &excelize.Font{
 						Family: "TH Sarabun New",
@@ -1137,7 +1145,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if err != nil {
 					return nil, err
 				}
-				err = xlsx.SetCellStyle(sheetTB12, accName, accName, style)
+				err = xlsx.SetCellStyle(sheet, accName, accName, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1279,104 +1287,149 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if len(totalAccountEnding) == 0 {
 					totalAccountEnding = append(totalAccountEnding, fmt.Sprintf("AE%d", row))
 				}
+				var rowType mDaybook.FinancialStatement
+				rowType.Code = acc.Code
+				rowType.Name = acc.Name
+				mapMonth := make(map[string][]mDaybook.AccountDetail)
 				for _, detail := range data.DaybookDetails {
-					// January
-					// s.logger.Error(util.IsValidMonth(1, detail.Daybook.TransactionDate))
+					var rowAccount mDaybook.AccountDetail
+					rowAccount.Number = detail.Daybook.Number
+					rowAccount.Description = detail.Name
+					rowAccount.Date = detail.Daybook.TransactionDate.Day()
+					m := util.Month(detail.Daybook.TransactionDate)
+					// 1113-01 = BBL-S/A-# 101-883310-1
+					if detail.Type == "DR" && acc.Code == "1113-01" {
+						rowAccount.AmountDr = detail.Amount
+					} else if detail.Type == "CR" {
+						rowAccount.AmountCr = detail.Amount
+					}
+					mapMonth[m] = append(mapMonth[m], rowAccount)
 					if util.IsValidMonth(1, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							janDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							janCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(2, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							febDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							febCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(3, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							marDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							marCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(4, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							aprDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							aprCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(5, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							mayDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							mayCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(6, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							junDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							junCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(7, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							julDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							julCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(8, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							augDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							augCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(9, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							sepDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							sepCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(10, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							octDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							octCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(11, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							novDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							novCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					} else if util.IsValidMonth(12, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
 							decDr += detail.Amount
+							sumDrTmp += detail.Amount
 						case "CR":
 							decCr += detail.Amount
+							sumCrTmp += detail.Amount
 						}
 					}
 				}
+				for k, v := range mapMonth {
+					var rowMonth mDaybook.MonthDetail
+					rowMonth.Month = k
+					rowMonth.AccountDetail = append(rowMonth.AccountDetail, v...)
+					rowType.MonthDetail = append(rowType.MonthDetail, rowMonth)
+				}
+				typeList = append(typeList, rowType)
 				// s.logger.Error(fmt.Sprintf("E%d", row))
 				totalForwardingDr := fmt.Sprintf("C%d", row)
 				if forwardingDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, totalForwardingDr, forwardingDr)
+					xlsx.SetCellValue(sheet, totalForwardingDr, forwardingDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, totalForwardingDr, totalForwardingDr, style)
+				err = xlsx.SetCellStyle(sheet, totalForwardingDr, totalForwardingDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1384,21 +1437,46 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if forwardingCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, totalForwardingCr, forwardingCr)
+					xlsx.SetCellValue(sheet, totalForwardingCr, forwardingCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, totalForwardingCr, totalForwardingCr, style)
+				err = xlsx.SetCellStyle(sheet, totalForwardingCr, totalForwardingCr, style)
 				if err != nil {
 					return nil, err
+				}
+				query := make(map[string][]string)
+				query["account"] = append(query["account"], acc.Id.Hex())
+				query["year"] = append(query["year"], strconv.Itoa(yearInt-1))
+				query["company"] = append(query["company"], acc.Company.Hex())
+				fwr, err := s.ForwardAccount.FindOne(ctx, query)
+				if err == nil {
+					switch fwr.Type {
+					case "DR":
+						forwardDrColumn := fmt.Sprintf("C%d", row)
+						xlsx.SetCellValue(sheet, forwardDrColumn, fwr.Amount)
+						err = xlsx.SetCellStyle(sheet, forwardDrColumn, forwardDrColumn, priceStyle)
+						if err != nil {
+							return nil, err
+						}
+						fwMap[acc.Code] = fmt.Sprintf("'%s'!%s", sheet, forwardDrColumn)
+					case "CR":
+						forwardCrColumn := fmt.Sprintf("D%d", row)
+						xlsx.SetCellValue(sheet, forwardCrColumn, fwr.Amount)
+						err = xlsx.SetCellStyle(sheet, forwardCrColumn, forwardCrColumn, priceStyle)
+						if err != nil {
+							return nil, err
+						}
+						fwMap[acc.Code] = fmt.Sprintf("'%s'!%s", sheet, forwardCrColumn)
+					}
 				}
 				janTotalDr := fmt.Sprintf("E%d", row)
 				if janDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, janTotalDr, janDr)
+					xlsx.SetCellValue(sheet, janTotalDr, janDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, janTotalDr, janTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, janTotalDr, janTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1406,10 +1484,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if janCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, janTotalCr, janCr)
+					xlsx.SetCellValue(sheet, janTotalCr, janCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, janTotalCr, janTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, janTotalCr, janTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1417,10 +1495,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if febDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, febTotalDr, febDr)
+					xlsx.SetCellValue(sheet, febTotalDr, febDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, febTotalDr, febTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, febTotalDr, febTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1428,10 +1506,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if febCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, febTotalCr, febCr)
+					xlsx.SetCellValue(sheet, febTotalCr, febCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, febTotalCr, febTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, febTotalCr, febTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1439,10 +1517,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if marDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, marTotalDr, marDr)
+					xlsx.SetCellValue(sheet, marTotalDr, marDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, marTotalDr, marTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, marTotalDr, marTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1450,10 +1528,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if marCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, marTotalCr, marCr)
+					xlsx.SetCellValue(sheet, marTotalCr, marCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, marTotalCr, marTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, marTotalCr, marTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1461,10 +1539,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if aprDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, aprTotalDr, aprDr)
+					xlsx.SetCellValue(sheet, aprTotalDr, aprDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, aprTotalDr, aprTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, aprTotalDr, aprTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1472,10 +1550,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if aprCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, aprTotalCr, aprCr)
+					xlsx.SetCellValue(sheet, aprTotalCr, aprCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, aprTotalCr, aprTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, aprTotalCr, aprTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1483,10 +1561,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if mayDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, mayTotalDr, mayDr)
+					xlsx.SetCellValue(sheet, mayTotalDr, mayDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, mayTotalDr, mayTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, mayTotalDr, mayTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1494,10 +1572,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if mayCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, mayTotalCr, mayCr)
+					xlsx.SetCellValue(sheet, mayTotalCr, mayCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, mayTotalCr, mayTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, mayTotalCr, mayTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1505,10 +1583,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if junDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, junTotalDr, junDr)
+					xlsx.SetCellValue(sheet, junTotalDr, junDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, junTotalDr, junTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, junTotalDr, junTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1516,10 +1594,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if junCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, junTotalCr, junCr)
+					xlsx.SetCellValue(sheet, junTotalCr, junCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, junTotalCr, junTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, junTotalCr, junTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1527,10 +1605,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if julDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, julTotalDr, julDr)
+					xlsx.SetCellValue(sheet, julTotalDr, julDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, julTotalDr, julTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, julTotalDr, julTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1538,10 +1616,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if julCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, julTotalCr, julCr)
+					xlsx.SetCellValue(sheet, julTotalCr, julCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, julTotalCr, julTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, julTotalCr, julTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1549,10 +1627,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if augDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, augTotalDr, augDr)
+					xlsx.SetCellValue(sheet, augTotalDr, augDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, augTotalDr, augTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, augTotalDr, augTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1560,10 +1638,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if augCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, augTotalCr, augCr)
+					xlsx.SetCellValue(sheet, augTotalCr, augCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, augTotalCr, augTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, augTotalCr, augTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1571,10 +1649,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if sepDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, sepTotalDr, sepDr)
+					xlsx.SetCellValue(sheet, sepTotalDr, sepDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, sepTotalDr, sepTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, sepTotalDr, sepTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1582,10 +1660,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if sepCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, sepTotalCr, sepCr)
+					xlsx.SetCellValue(sheet, sepTotalCr, sepCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, sepTotalCr, sepTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, sepTotalCr, sepTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1593,10 +1671,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if octDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, octTotalDr, octDr)
+					xlsx.SetCellValue(sheet, octTotalDr, octDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, octTotalDr, octTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, octTotalDr, octTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1604,10 +1682,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if octCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, octTotalCr, octCr)
+					xlsx.SetCellValue(sheet, octTotalCr, octCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, octTotalCr, octTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, octTotalCr, octTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1615,10 +1693,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if novDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, novTotalDr, novDr)
+					xlsx.SetCellValue(sheet, novTotalDr, novDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, novTotalDr, novTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, novTotalDr, novTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1626,10 +1704,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if novCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, novTotalCr, novCr)
+					xlsx.SetCellValue(sheet, novTotalCr, novCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, novTotalCr, novTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, novTotalCr, novTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1637,10 +1715,10 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if decDr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, decTotalDr, decDr)
+					xlsx.SetCellValue(sheet, decTotalDr, decDr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, decTotalDr, decTotalDr, style)
+				err = xlsx.SetCellStyle(sheet, decTotalDr, decTotalDr, style)
 				if err != nil {
 					return nil, err
 				}
@@ -1648,27 +1726,78 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if decCr == 0 {
 					style = blankStyle
 				} else {
-					xlsx.SetCellValue(sheetTB12, decTotalCr, decCr)
+					xlsx.SetCellValue(sheet, decTotalCr, decCr)
 					style = priceStyle
 				}
-				err = xlsx.SetCellStyle(sheetTB12, decTotalCr, decTotalCr, style)
+				err = xlsx.SetCellStyle(sheet, decTotalCr, decTotalCr, style)
 				if err != nil {
 					return nil, err
 				}
 
 				// Total DR
 				allDr := fmt.Sprintf("AC%d", row)
-				xlsx.SetCellFormula(sheetTB12, allDr, fmt.Sprintf("SUM(%s)", strings.Join(sumDr, "+")))
+				xlsx.SetCellFormula(sheet, allDr, fmt.Sprintf("SUM(%s)", strings.Join(sumDr, "+")))
 				allCr := fmt.Sprintf("AD%d", row)
-				xlsx.SetCellFormula(sheetTB12, allCr, fmt.Sprintf("SUM(%s)", strings.Join(sumCr, "+")))
+				xlsx.SetCellFormula(sheet, allCr, fmt.Sprintf("SUM(%s)", strings.Join(sumCr, "+")))
 				resultEnding := fmt.Sprintf("AE%d", row)
-				xlsx.SetCellFormula(sheetTB12, resultEnding, fmt.Sprintf("%s-%s", fmt.Sprintf("AC%d", row), fmt.Sprintf("AD%d", row)))
-				err = xlsx.SetCellStyle(sheetTB12, allDr, resultEnding, priceStyle)
+				xlsx.SetCellFormula(sheet, resultEnding, fmt.Sprintf("%s-%s", fmt.Sprintf("AC%d", row), fmt.Sprintf("AD%d", row)))
+				err = xlsx.SetCellStyle(sheet, allDr, resultEnding, priceStyle)
 				if err != nil {
 					return nil, err
 				}
+				twoDigit := fmt.Sprintf("%.2f", sumDrTmp-sumCrTmp)
+				e, err := strconv.ParseFloat(twoDigit, 64)
+				if err != nil {
+					return nil, err
+				}
+				if e != 0 && accountFirstNo <= 3 {
+					var forward mForwardAccount.ForwardAccount
+					forward.Account = acc.Id
+					switch accountFirstNo {
+					case 1:
+						if acc.Code == "1420-01" ||
+							acc.Code == "1420-02" ||
+							acc.Code == "1420-03" ||
+							acc.Code == "1420-04" {
+							forward.Type = "CR"
+						} else {
+							forward.Type = "DR"
+						}
+					case 2:
+						forward.Type = "CR"
+					case 3:
+						forward.Type = "CR"
+					}
+					forward.Amount = e
+					forward.Year = yearInt
+					forward.Company = acc.Company
+					forward.UpdatedBy = user.Id
+					forward.UpdatedAt = time.Now()
+					query := make(map[string][]string)
+					query["account"] = append(query["account"], acc.Id.Hex())
+					query["year"] = append(query["year"], year)
+					query["company"] = append(query["company"], acc.Company.Hex())
+					fw, err := s.ForwardAccount.FindOne(ctx, query)
+					if err != nil {
+						forward.Id = primitive.NewObjectID()
+						forward.CreatedBy = user.Id
+						forward.CreatedAt = time.Now()
+						_, err = s.ForwardAccount.Create(ctx, forward)
+						if err != nil {
+							s.logger.Error(err)
+						}
+					} else {
+						forward.Id = fw.Id
+						_, err = s.ForwardAccount.Update(ctx, forward)
+						if err != nil {
+							s.logger.Error(err)
+						}
+					}
+				}
 				sumDr = []string{}
 				sumCr = []string{}
+				sumDrTmp = 0
+				sumCrTmp = 0
 			} else {
 				isTotal = true
 			}
@@ -1677,249 +1806,249 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if end {
 					row++
 				}
-				err := xlsx.SetRowHeight(sheetTB12, row, 21.75)
+				err := xlsx.SetRowHeight(sheet, row, 21.75)
 				total := fmt.Sprintf("A%d", row)
 				if err != nil {
 					return nil, err
 				}
-				err = xlsx.MergeCell(sheetTB12, total, fmt.Sprintf("B%d", row))
+				err = xlsx.MergeCell(sheet, total, fmt.Sprintf("B%d", row))
 				if err != nil {
 					return nil, err
 				}
-				xlsx.SetCellValue(sheetTB12, total, fmt.Sprintf("รวม%s", accountType))
+				xlsx.SetCellValue(sheet, total, fmt.Sprintf("รวม%s", accountType))
 				accountType = acc.Type
-				err = xlsx.SetCellStyle(sheetTB12, total, fmt.Sprintf("B%d", row), titleStyle)
+				err = xlsx.SetCellStyle(sheet, total, fmt.Sprintf("B%d", row), titleStyle)
 				if err != nil {
 					return nil, err
 				}
 				totalAccountForwardDrColumn := fmt.Sprintf("C%d", row)
 				totalAccountForwardDr = append(totalAccountForwardDr, fmt.Sprintf("C%d", row-1))
 				totalAccountForwardDrSum = append(totalAccountForwardDrSum, totalAccountForwardDrColumn)
-				xlsx.SetCellFormula(sheetTB12, totalAccountForwardDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, totalAccountForwardDrColumn, totalAccountForwardDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, totalAccountForwardDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardDr, ":")))
+				err = xlsx.SetCellStyle(sheet, totalAccountForwardDrColumn, totalAccountForwardDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				totalAccountForwardCrColumn := fmt.Sprintf("D%d", row)
 				totalAccountForwardCr = append(totalAccountForwardCr, fmt.Sprintf("D%d", row-1))
 				totalAccountForwardCrSum = append(totalAccountForwardCrSum, totalAccountForwardCrColumn)
-				xlsx.SetCellFormula(sheetTB12, totalAccountForwardCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, totalAccountForwardCrColumn, totalAccountForwardCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, totalAccountForwardCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardCr, ":")))
+				err = xlsx.SetCellStyle(sheet, totalAccountForwardCrColumn, totalAccountForwardCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				janAccountDrColumn := fmt.Sprintf("E%d", row)
 				janAccountDr = append(janAccountDr, fmt.Sprintf("E%d", row-1))
 				janAccountDrSum = append(janAccountDrSum, janAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, janAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, janAccountDrColumn, janAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, janAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, janAccountDrColumn, janAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				janAccountCrColumn := fmt.Sprintf("F%d", row)
 				janAccountCr = append(janAccountCr, fmt.Sprintf("F%d", row-1))
 				janAccountCrSum = append(janAccountCrSum, janAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, janAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, janAccountCrColumn, janAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, janAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, janAccountCrColumn, janAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				febAccountDrColumn := fmt.Sprintf("G%d", row)
 				febAccountDr = append(febAccountDr, fmt.Sprintf("G%d", row-1))
 				febAccountDrSum = append(febAccountDrSum, febAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, febAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, febAccountDrColumn, febAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, febAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, febAccountDrColumn, febAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				febAccountCrColumn := fmt.Sprintf("H%d", row)
 				febAccountCr = append(febAccountCr, fmt.Sprintf("H%d", row-1))
 				febAccountCrSum = append(febAccountCrSum, febAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, febAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, febAccountCrColumn, febAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, febAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, febAccountCrColumn, febAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				marAccountDrColumn := fmt.Sprintf("I%d", row)
 				marAccountDr = append(marAccountDr, fmt.Sprintf("I%d", row-1))
 				marAccountDrSum = append(marAccountDrSum, marAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, marAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, marAccountDrColumn, marAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, marAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, marAccountDrColumn, marAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				marAccountCrColumn := fmt.Sprintf("J%d", row)
 				marAccountCr = append(marAccountCr, fmt.Sprintf("J%d", row-1))
 				marAccountCrSum = append(marAccountCrSum, marAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, marAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, marAccountCrColumn, marAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, marAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, marAccountCrColumn, marAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				aprAccountDrColumn := fmt.Sprintf("K%d", row)
 				aprAccountDr = append(aprAccountDr, fmt.Sprintf("K%d", row-1))
 				aprAccountDrSum = append(aprAccountDrSum, aprAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, aprAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, aprAccountDrColumn, aprAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, aprAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, aprAccountDrColumn, aprAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				aprAccountCrColumn := fmt.Sprintf("L%d", row)
 				aprAccountCr = append(aprAccountCr, fmt.Sprintf("L%d", row-1))
 				aprAccountCrSum = append(aprAccountCrSum, aprAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, aprAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, aprAccountCrColumn, aprAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, aprAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, aprAccountCrColumn, aprAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				mayAccountDrColumn := fmt.Sprintf("M%d", row)
 				mayAccountDr = append(mayAccountDr, fmt.Sprintf("M%d", row-1))
 				mayAccountDrSum = append(mayAccountDrSum, mayAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, mayAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, mayAccountDrColumn, mayAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, mayAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, mayAccountDrColumn, mayAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				mayAccountCrColumn := fmt.Sprintf("N%d", row)
 				mayAccountCr = append(mayAccountCr, fmt.Sprintf("N%d", row-1))
 				mayAccountCrSum = append(mayAccountCrSum, mayAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, mayAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, mayAccountCrColumn, mayAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, mayAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, mayAccountCrColumn, mayAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				junAccountDrColumn := fmt.Sprintf("O%d", row)
 				junAccountDr = append(junAccountDr, fmt.Sprintf("O%d", row-1))
 				junAccountDrSum = append(junAccountDrSum, junAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, junAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, junAccountDrColumn, junAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, junAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, junAccountDrColumn, junAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				junAccountCrColumn := fmt.Sprintf("P%d", row)
 				junAccountCr = append(junAccountCr, fmt.Sprintf("P%d", row-1))
 				junAccountCrSum = append(junAccountCrSum, junAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, junAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, junAccountCrColumn, junAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, junAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, junAccountCrColumn, junAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				julAccountDrColumn := fmt.Sprintf("Q%d", row)
 				julAccountDr = append(julAccountDr, fmt.Sprintf("Q%d", row-1))
 				julAccountDrSum = append(julAccountDrSum, julAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, julAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, julAccountDrColumn, julAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, julAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, julAccountDrColumn, julAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				julAccountCrColumn := fmt.Sprintf("R%d", row)
 				julAccountCr = append(julAccountCr, fmt.Sprintf("R%d", row-1))
 				julAccountCrSum = append(julAccountCrSum, julAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, julAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, julAccountCrColumn, julAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, julAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, julAccountCrColumn, julAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				augAccountDrColumn := fmt.Sprintf("S%d", row)
 				augAccountDr = append(augAccountDr, fmt.Sprintf("S%d", row-1))
 				augAccountDrSum = append(augAccountDrSum, augAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, augAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, augAccountDrColumn, augAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, augAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, augAccountDrColumn, augAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				augAccountCrColumn := fmt.Sprintf("T%d", row)
 				augAccountCr = append(augAccountCr, fmt.Sprintf("T%d", row-1))
 				augAccountCrSum = append(augAccountCrSum, augAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, augAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, augAccountCrColumn, augAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, augAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, augAccountCrColumn, augAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				sepAccountDrColumn := fmt.Sprintf("U%d", row)
 				sepAccountDr = append(sepAccountDr, fmt.Sprintf("U%d", row-1))
 				sepAccountDrSum = append(sepAccountDrSum, sepAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, sepAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, sepAccountDrColumn, sepAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, sepAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, sepAccountDrColumn, sepAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				sepAccountCrColumn := fmt.Sprintf("V%d", row)
 				sepAccountCr = append(sepAccountCr, fmt.Sprintf("V%d", row-1))
 				sepAccountCrSum = append(sepAccountCrSum, sepAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, sepAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, sepAccountCrColumn, sepAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, sepAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, sepAccountCrColumn, sepAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				octAccountDrColumn := fmt.Sprintf("W%d", row)
 				octAccountDr = append(octAccountDr, fmt.Sprintf("W%d", row-1))
 				octAccountDrSum = append(octAccountDrSum, octAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, octAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, octAccountDrColumn, octAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, octAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, octAccountDrColumn, octAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				octAccountCrColumn := fmt.Sprintf("X%d", row)
 				octAccountCr = append(octAccountCr, fmt.Sprintf("X%d", row-1))
 				octAccountCrSum = append(octAccountCrSum, octAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, octAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, octAccountCrColumn, octAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, octAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, octAccountCrColumn, octAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				novAccountDrColumn := fmt.Sprintf("Y%d", row)
 				novAccountDr = append(novAccountDr, fmt.Sprintf("Y%d", row-1))
 				novAccountDrSum = append(novAccountDrSum, novAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, novAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, novAccountDrColumn, novAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, novAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, novAccountDrColumn, novAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				novAccountCrColumn := fmt.Sprintf("Z%d", row)
 				novAccountCr = append(novAccountCr, fmt.Sprintf("Z%d", row-1))
 				novAccountCrSum = append(novAccountCrSum, novAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, novAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, novAccountCrColumn, novAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, novAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, novAccountCrColumn, novAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				decAccountDrColumn := fmt.Sprintf("AA%d", row)
 				decAccountDr = append(decAccountDr, fmt.Sprintf("AA%d", row-1))
 				decAccountDrSum = append(decAccountDrSum, decAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, decAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, decAccountDrColumn, decAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, decAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, decAccountDrColumn, decAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				decAccountCrColumn := fmt.Sprintf("AB%d", row)
 				decAccountCr = append(decAccountCr, fmt.Sprintf("AB%d", row-1))
 				decAccountCrSum = append(decAccountCrSum, decAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, decAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, decAccountCrColumn, decAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, decAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, decAccountCrColumn, decAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				totalAccountDrColumn := fmt.Sprintf("AC%d", row)
 				totalAccountDr = append(totalAccountDr, fmt.Sprintf("AC%d", row-1))
 				totalAccountDrSum = append(totalAccountDrSum, totalAccountDrColumn)
-				xlsx.SetCellFormula(sheetTB12, totalAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountDr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, totalAccountDrColumn, totalAccountDrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, totalAccountDrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountDr, ":")))
+				err = xlsx.SetCellStyle(sheet, totalAccountDrColumn, totalAccountDrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				totalAccountCrColumn := fmt.Sprintf("AD%d", row)
 				totalAccountCr = append(totalAccountCr, fmt.Sprintf("AD%d", row-1))
 				totalAccountCrSum = append(totalAccountCrSum, totalAccountCrColumn)
-				xlsx.SetCellFormula(sheetTB12, totalAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountCr, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, totalAccountCrColumn, totalAccountCrColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, totalAccountCrColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountCr, ":")))
+				err = xlsx.SetCellStyle(sheet, totalAccountCrColumn, totalAccountCrColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
 				totalAccountEndingColumn := fmt.Sprintf("AE%d", row)
 				totalAccountEnding = append(totalAccountEnding, fmt.Sprintf("AE%d", row-1))
-				xlsx.SetCellFormula(sheetTB12, totalAccountEndingColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountEnding, ":")))
-				err = xlsx.SetCellStyle(sheetTB12, totalAccountEndingColumn, totalAccountEndingColumn, sumStyle)
+				xlsx.SetCellFormula(sheet, totalAccountEndingColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountEnding, ":")))
+				err = xlsx.SetCellStyle(sheet, totalAccountEndingColumn, totalAccountEndingColumn, sumStyle)
 				if err != nil {
 					return nil, err
 				}
@@ -1963,367 +2092,372 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 			}
 			row++
 		}
+		// b, err := json.Marshal(typeList)
+		// if err != nil {
+		// 	s.logger.Error(err)
+		// }
+		// s.logger.Warn(string(b))
 		// #################### sum result ####################
-		err = xlsx.SetRowHeight(sheetTB12, row, 21.75)
+		err = xlsx.SetRowHeight(sheet, row, 21.75)
 		blankColumn := fmt.Sprintf("A%d", row)
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.MergeCell(sheetTB12, blankColumn, fmt.Sprintf("B%d", row))
+		err = xlsx.MergeCell(sheet, blankColumn, fmt.Sprintf("B%d", row))
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.SetCellStyle(sheetTB12, blankColumn, fmt.Sprintf("B%d", row), titleStyle)
+		err = xlsx.SetCellStyle(sheet, blankColumn, fmt.Sprintf("B%d", row), titleStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalAccountForwardDrSumColumn := fmt.Sprintf("C%d", row)
-		xlsx.SetCellFormula(sheetTB12, totalAccountForwardDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, totalAccountForwardDrSumColumn, totalAccountForwardDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, totalAccountForwardDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, totalAccountForwardDrSumColumn, totalAccountForwardDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalAccountForwardCrSumColumn := fmt.Sprintf("D%d", row)
-		xlsx.SetCellFormula(sheetTB12, totalAccountForwardCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, totalAccountForwardCrSumColumn, totalAccountForwardCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, totalAccountForwardCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountForwardCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, totalAccountForwardCrSumColumn, totalAccountForwardCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		janAccountDrSumColumn := fmt.Sprintf("E%d", row)
-		xlsx.SetCellFormula(sheetTB12, janAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, janAccountDrSumColumn, janAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, janAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, janAccountDrSumColumn, janAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		janAccountCrSumColumn := fmt.Sprintf("F%d", row)
-		xlsx.SetCellFormula(sheetTB12, janAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, janAccountCrSumColumn, janAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, janAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(janAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, janAccountCrSumColumn, janAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		febAccountDrSumColumn := fmt.Sprintf("G%d", row)
-		xlsx.SetCellFormula(sheetTB12, febAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, febAccountDrSumColumn, febAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, febAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, febAccountDrSumColumn, febAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		febAccountCrSumColumn := fmt.Sprintf("H%d", row)
-		xlsx.SetCellFormula(sheetTB12, febAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, febAccountCrSumColumn, febAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, febAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(febAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, febAccountCrSumColumn, febAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		marAccountDrSumColumn := fmt.Sprintf("I%d", row)
-		xlsx.SetCellFormula(sheetTB12, marAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, marAccountDrSumColumn, marAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, marAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, marAccountDrSumColumn, marAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		marAccountCrSumColumn := fmt.Sprintf("J%d", row)
-		xlsx.SetCellFormula(sheetTB12, marAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, marAccountCrSumColumn, marAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, marAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(marAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, marAccountCrSumColumn, marAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		aprAccountDrSumColumn := fmt.Sprintf("K%d", row)
-		xlsx.SetCellFormula(sheetTB12, aprAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, aprAccountDrSumColumn, aprAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, aprAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, aprAccountDrSumColumn, aprAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		aprAccountCrSumColumn := fmt.Sprintf("L%d", row)
-		xlsx.SetCellFormula(sheetTB12, aprAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, aprAccountCrSumColumn, aprAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, aprAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(aprAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, aprAccountCrSumColumn, aprAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		mayAccountDrSumColumn := fmt.Sprintf("M%d", row)
-		xlsx.SetCellFormula(sheetTB12, mayAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, mayAccountDrSumColumn, mayAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, mayAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, mayAccountDrSumColumn, mayAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		mayAccountCrSumColumn := fmt.Sprintf("N%d", row)
-		xlsx.SetCellFormula(sheetTB12, mayAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, mayAccountCrSumColumn, mayAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, mayAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(mayAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, mayAccountCrSumColumn, mayAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		junAccountDrSumColumn := fmt.Sprintf("O%d", row)
-		xlsx.SetCellFormula(sheetTB12, junAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, junAccountDrSumColumn, junAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, junAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, junAccountDrSumColumn, junAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		junAccountCrSumColumn := fmt.Sprintf("P%d", row)
-		xlsx.SetCellFormula(sheetTB12, junAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, junAccountCrSumColumn, junAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, junAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(junAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, junAccountCrSumColumn, junAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		julAccountDrSumColumn := fmt.Sprintf("Q%d", row)
-		xlsx.SetCellFormula(sheetTB12, julAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, julAccountDrSumColumn, julAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, julAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, julAccountDrSumColumn, julAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		julAccountCrSumColumn := fmt.Sprintf("R%d", row)
-		xlsx.SetCellFormula(sheetTB12, julAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, julAccountCrSumColumn, julAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, julAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(julAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, julAccountCrSumColumn, julAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		augAccountDrSumColumn := fmt.Sprintf("S%d", row)
-		xlsx.SetCellFormula(sheetTB12, augAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, augAccountDrSumColumn, augAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, augAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, augAccountDrSumColumn, augAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		augAccountCrSumColumn := fmt.Sprintf("T%d", row)
-		xlsx.SetCellFormula(sheetTB12, augAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, augAccountCrSumColumn, augAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, augAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(augAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, augAccountCrSumColumn, augAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		sepAccountDrSumColumn := fmt.Sprintf("U%d", row)
-		xlsx.SetCellFormula(sheetTB12, sepAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, sepAccountDrSumColumn, sepAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, sepAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, sepAccountDrSumColumn, sepAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		sepAccountCrSumColumn := fmt.Sprintf("V%d", row)
-		xlsx.SetCellFormula(sheetTB12, sepAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, sepAccountCrSumColumn, sepAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, sepAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(sepAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, sepAccountCrSumColumn, sepAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		octAccountDrSumColumn := fmt.Sprintf("W%d", row)
-		xlsx.SetCellFormula(sheetTB12, octAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, octAccountDrSumColumn, octAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, octAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, octAccountDrSumColumn, octAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		octAccountCrSumColumn := fmt.Sprintf("X%d", row)
-		xlsx.SetCellFormula(sheetTB12, octAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, octAccountCrSumColumn, octAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, octAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(octAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, octAccountCrSumColumn, octAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		novAccountDrSumColumn := fmt.Sprintf("Y%d", row)
-		xlsx.SetCellFormula(sheetTB12, novAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, novAccountDrSumColumn, novAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, novAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, novAccountDrSumColumn, novAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		novAccountCrSumColumn := fmt.Sprintf("Z%d", row)
-		xlsx.SetCellFormula(sheetTB12, novAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, novAccountCrSumColumn, novAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, novAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(novAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, novAccountCrSumColumn, novAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		decAccountDrSumColumn := fmt.Sprintf("AA%d", row)
-		xlsx.SetCellFormula(sheetTB12, decAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, decAccountDrSumColumn, decAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, decAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, decAccountDrSumColumn, decAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		decAccountCrSumColumn := fmt.Sprintf("AB%d", row)
-		xlsx.SetCellFormula(sheetTB12, decAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, decAccountCrSumColumn, decAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, decAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(decAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, decAccountCrSumColumn, decAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalAccountDrSumColumn := fmt.Sprintf("AC%d", row)
-		xlsx.SetCellFormula(sheetTB12, totalAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountDrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, totalAccountDrSumColumn, totalAccountDrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, totalAccountDrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountDrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, totalAccountDrSumColumn, totalAccountDrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalAccountCrSumColumn := fmt.Sprintf("AD%d", row)
-		xlsx.SetCellFormula(sheetTB12, totalAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountCrSum, ":")))
-		err = xlsx.SetCellStyle(sheetTB12, totalAccountCrSumColumn, totalAccountCrSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, totalAccountCrSumColumn, fmt.Sprintf("SUM(%s)", strings.Join(totalAccountCrSum, ":")))
+		err = xlsx.SetCellStyle(sheet, totalAccountCrSumColumn, totalAccountCrSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		endingSumColumn := fmt.Sprintf("AE%d", row)
-		xlsx.SetCellFormula(sheetTB12, endingSumColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("AC%d", row), fmt.Sprintf("AD%d", row)))
-		err = xlsx.SetCellStyle(sheetTB12, endingSumColumn, endingSumColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, endingSumColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("AC%d", row), fmt.Sprintf("AD%d", row)))
+		err = xlsx.SetCellStyle(sheet, endingSumColumn, endingSumColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 
 		// #################### กำไร (ขาดทุน) สุทธิ ####################
 		row++
-		err = xlsx.SetRowHeight(sheetTB12, row, 21.75)
+		err = xlsx.SetRowHeight(sheet, row, 21.75)
 		netProfitLossColumn := fmt.Sprintf("A%d", row)
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.MergeCell(sheetTB12, netProfitLossColumn, fmt.Sprintf("B%d", row))
+		err = xlsx.MergeCell(sheet, netProfitLossColumn, fmt.Sprintf("B%d", row))
 		if err != nil {
 			return nil, err
 		}
-		xlsx.SetCellValue(sheetTB12, netProfitLossColumn, "กำไร (ขาดทุน) สุทธิ")
-		err = xlsx.SetCellStyle(sheetTB12, netProfitLossColumn, fmt.Sprintf("B%d", row), titleStyle)
+		xlsx.SetCellValue(sheet, netProfitLossColumn, "กำไร (ขาดทุน) สุทธิ")
+		err = xlsx.SetCellStyle(sheet, netProfitLossColumn, fmt.Sprintf("B%d", row), titleStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalForwardDrSumNetProfitLossColumn := fmt.Sprintf("C%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, totalForwardDrSumNetProfitLossColumn, totalForwardDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, totalForwardDrSumNetProfitLossColumn, totalForwardDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalForwardCrSumNetProfitLossColumn := fmt.Sprintf("D%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, totalForwardCrSumNetProfitLossColumn, totalForwardCrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, totalForwardCrSumNetProfitLossColumn, totalForwardCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		janDrSumNetProfitLossColumn := fmt.Sprintf("E%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, janDrSumNetProfitLossColumn, janDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, janDrSumNetProfitLossColumn, janDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		janCrSumNetProfitLossColumn := fmt.Sprintf("F%d", row)
-		xlsx.SetCellFormula(sheetTB12, janCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", row-1), fmt.Sprintf("F%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, janCrSumNetProfitLossColumn, janCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, janCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", row-1), fmt.Sprintf("F%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, janCrSumNetProfitLossColumn, janCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		febDrSumNetProfitLossColumn := fmt.Sprintf("G%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, febDrSumNetProfitLossColumn, febDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, febDrSumNetProfitLossColumn, febDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		febCrSumNetProfitLossColumn := fmt.Sprintf("H%d", row)
-		xlsx.SetCellFormula(sheetTB12, febCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("G%d", row-1), fmt.Sprintf("H%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, febCrSumNetProfitLossColumn, febCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, febCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("G%d", row-1), fmt.Sprintf("H%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, febCrSumNetProfitLossColumn, febCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		marDrSumNetProfitLossColumn := fmt.Sprintf("I%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, marDrSumNetProfitLossColumn, marDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, marDrSumNetProfitLossColumn, marDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		marCrSumNetProfitLossColumn := fmt.Sprintf("J%d", row)
-		xlsx.SetCellFormula(sheetTB12, marCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("I%d", row-1), fmt.Sprintf("J%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, marCrSumNetProfitLossColumn, marCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, marCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("I%d", row-1), fmt.Sprintf("J%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, marCrSumNetProfitLossColumn, marCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		aprDrSumNetProfitLossColumn := fmt.Sprintf("K%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, aprDrSumNetProfitLossColumn, aprDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, aprDrSumNetProfitLossColumn, aprDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		aprCrSumNetProfitLossColumn := fmt.Sprintf("L%d", row)
-		xlsx.SetCellFormula(sheetTB12, aprCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("K%d", row-1), fmt.Sprintf("L%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, aprCrSumNetProfitLossColumn, aprCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, aprCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("K%d", row-1), fmt.Sprintf("L%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, aprCrSumNetProfitLossColumn, aprCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		mayDrSumNetProfitLossColumn := fmt.Sprintf("M%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, mayDrSumNetProfitLossColumn, mayDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, mayDrSumNetProfitLossColumn, mayDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		mayCrSumNetProfitLossColumn := fmt.Sprintf("N%d", row)
-		xlsx.SetCellFormula(sheetTB12, mayCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("M%d", row-1), fmt.Sprintf("N%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, mayCrSumNetProfitLossColumn, mayCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, mayCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("M%d", row-1), fmt.Sprintf("N%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, mayCrSumNetProfitLossColumn, mayCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		junDrSumNetProfitLossColumn := fmt.Sprintf("O%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, junDrSumNetProfitLossColumn, junDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, junDrSumNetProfitLossColumn, junDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		junCrSumNetProfitLossColumn := fmt.Sprintf("P%d", row)
-		xlsx.SetCellFormula(sheetTB12, junCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("O%d", row-1), fmt.Sprintf("P%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, junCrSumNetProfitLossColumn, junCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, junCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("O%d", row-1), fmt.Sprintf("P%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, junCrSumNetProfitLossColumn, junCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		julDrSumNetProfitLossColumn := fmt.Sprintf("Q%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, julDrSumNetProfitLossColumn, julDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, julDrSumNetProfitLossColumn, julDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		julCrSumNetProfitLossColumn := fmt.Sprintf("R%d", row)
-		xlsx.SetCellFormula(sheetTB12, julCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("Q%d", row-1), fmt.Sprintf("R%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, julCrSumNetProfitLossColumn, julCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, julCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("Q%d", row-1), fmt.Sprintf("R%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, julCrSumNetProfitLossColumn, julCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		augDrSumNetProfitLossColumn := fmt.Sprintf("S%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, augDrSumNetProfitLossColumn, augDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, augDrSumNetProfitLossColumn, augDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		augCrSumNetProfitLossColumn := fmt.Sprintf("T%d", row)
-		xlsx.SetCellFormula(sheetTB12, augCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("S%d", row-1), fmt.Sprintf("T%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, augCrSumNetProfitLossColumn, augCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, augCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("S%d", row-1), fmt.Sprintf("T%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, augCrSumNetProfitLossColumn, augCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		sepDrSumNetProfitLossColumn := fmt.Sprintf("U%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, sepDrSumNetProfitLossColumn, sepDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, sepDrSumNetProfitLossColumn, sepDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		sepCrSumNetProfitLossColumn := fmt.Sprintf("V%d", row)
-		xlsx.SetCellFormula(sheetTB12, sepCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("U%d", row-1), fmt.Sprintf("V%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, sepCrSumNetProfitLossColumn, sepCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, sepCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("U%d", row-1), fmt.Sprintf("V%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, sepCrSumNetProfitLossColumn, sepCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		octDrSumNetProfitLossColumn := fmt.Sprintf("W%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, octDrSumNetProfitLossColumn, octDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, octDrSumNetProfitLossColumn, octDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		octCrSumNetProfitLossColumn := fmt.Sprintf("X%d", row)
-		xlsx.SetCellFormula(sheetTB12, octCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("W%d", row-1), fmt.Sprintf("X%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, octCrSumNetProfitLossColumn, octCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, octCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("W%d", row-1), fmt.Sprintf("X%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, octCrSumNetProfitLossColumn, octCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		novDrSumNetProfitLossColumn := fmt.Sprintf("Y%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, novDrSumNetProfitLossColumn, novDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, novDrSumNetProfitLossColumn, novDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		novCrSumNetProfitLossColumn := fmt.Sprintf("Z%d", row)
-		xlsx.SetCellFormula(sheetTB12, novCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("Y%d", row-1), fmt.Sprintf("Z%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, novCrSumNetProfitLossColumn, novCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, novCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("Y%d", row-1), fmt.Sprintf("Z%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, novCrSumNetProfitLossColumn, novCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		decDrSumNetProfitLossColumn := fmt.Sprintf("AA%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, decDrSumNetProfitLossColumn, decDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, decDrSumNetProfitLossColumn, decDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		decCrSumNetProfitLossColumn := fmt.Sprintf("AB%d", row)
-		xlsx.SetCellFormula(sheetTB12, decCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("AA%d", row-1), fmt.Sprintf("AB%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, decCrSumNetProfitLossColumn, decCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, decCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("AA%d", row-1), fmt.Sprintf("AB%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, decCrSumNetProfitLossColumn, decCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalDrSumNetProfitLossColumn := fmt.Sprintf("AC%d", row)
-		err = xlsx.SetCellStyle(sheetTB12, totalDrSumNetProfitLossColumn, totalDrSumNetProfitLossColumn, sumStyle)
+		err = xlsx.SetCellStyle(sheet, totalDrSumNetProfitLossColumn, totalDrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		totalCrSumNetProfitLossColumn := fmt.Sprintf("AD%d", row)
-		xlsx.SetCellFormula(sheetTB12, totalCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("AC%d", row-1), fmt.Sprintf("AD%d", row-1)))
-		err = xlsx.SetCellStyle(sheetTB12, totalCrSumNetProfitLossColumn, totalCrSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, totalCrSumNetProfitLossColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("AC%d", row-1), fmt.Sprintf("AD%d", row-1)))
+		err = xlsx.SetCellStyle(sheet, totalCrSumNetProfitLossColumn, totalCrSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
 		endingSumNetProfitLossColumn := fmt.Sprintf("AE%d", row)
-		xlsx.SetCellFormula(sheetTB12, endingSumNetProfitLossColumn, fmt.Sprintf("-%s", strings.Join(resultNetProfitLoss, "-")))
-		err = xlsx.SetCellStyle(sheetTB12, endingSumNetProfitLossColumn, endingSumNetProfitLossColumn, sumStyle)
+		xlsx.SetCellFormula(sheet, endingSumNetProfitLossColumn, fmt.Sprintf("-%s", strings.Join(resultNetProfitLoss, "-")))
+		err = xlsx.SetCellStyle(sheet, endingSumNetProfitLossColumn, endingSumNetProfitLossColumn, sumStyle)
 		if err != nil {
 			return nil, err
 		}
@@ -2374,47 +2508,467 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.SetRowHeight(sheetTB12, row, 21.75)
+		err = xlsx.SetRowHeight(sheet, row, 21.75)
 		diffAssetsLiabilitiesOwnerEquityColumn := fmt.Sprintf("A%d", row)
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.MergeCell(sheetTB12, diffAssetsLiabilitiesOwnerEquityColumn, fmt.Sprintf("B%d", row))
+		err = xlsx.MergeCell(sheet, diffAssetsLiabilitiesOwnerEquityColumn, fmt.Sprintf("B%d", row))
 		if err != nil {
 			return nil, err
 		}
-		xlsx.SetCellValue(sheetTB12, diffAssetsLiabilitiesOwnerEquityColumn, "ผลต่างระหว่างสินทรัพย์กับหนี้สินและส่วนของเจ้าของ")
-		err = xlsx.SetCellStyle(sheetTB12, diffAssetsLiabilitiesOwnerEquityColumn, diffAssetsLiabilitiesOwnerEquityColumn, titleDiffStyle)
+		xlsx.SetCellValue(sheet, diffAssetsLiabilitiesOwnerEquityColumn, "ผลต่างระหว่างสินทรัพย์กับหนี้สินและส่วนของเจ้าของ")
+		err = xlsx.SetCellStyle(sheet, diffAssetsLiabilitiesOwnerEquityColumn, diffAssetsLiabilitiesOwnerEquityColumn, titleDiffStyle)
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.SetCellStyle(sheetTB12, fmt.Sprintf("B%d", row), fmt.Sprintf("AE%d", row), titleRedStyle)
+		err = xlsx.SetCellStyle(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("AE%d", row), titleRedStyle)
 		if err != nil {
 			return nil, err
 		}
-		xlsx.SetCellFormula(sheetTB12, fmt.Sprintf("AE%d", row), strings.Join(resultDiffAssetsLiabilitiesOwnerEquity, "+"))
+		xlsx.SetCellFormula(sheet, fmt.Sprintf("AE%d", row), strings.Join(resultDiffAssetsLiabilitiesOwnerEquity, "+"))
 		resultDifference = append(resultDifference, fmt.Sprintf("AE%d", row))
 		// #################### ผลต่าง ####################
 		row++
-		err = xlsx.SetRowHeight(sheetTB12, row, 21.75)
+		err = xlsx.SetRowHeight(sheet, row, 21.75)
 		differenceColumn := fmt.Sprintf("A%d", row)
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.MergeCell(sheetTB12, differenceColumn, fmt.Sprintf("B%d", row))
+		err = xlsx.MergeCell(sheet, differenceColumn, fmt.Sprintf("B%d", row))
 		if err != nil {
 			return nil, err
 		}
-		xlsx.SetCellValue(sheetTB12, differenceColumn, "ผลต่าง")
-		err = xlsx.SetCellStyle(sheetTB12, differenceColumn, differenceColumn, titleDiffStyle)
+		xlsx.SetCellValue(sheet, differenceColumn, "ผลต่าง")
+		err = xlsx.SetCellStyle(sheet, differenceColumn, differenceColumn, titleDiffStyle)
 		if err != nil {
 			return nil, err
 		}
-		err = xlsx.SetCellStyle(sheetTB12, fmt.Sprintf("B%d", row), fmt.Sprintf("AE%d", row), titleRedStyle)
+		err = xlsx.SetCellStyle(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("AE%d", row), titleRedStyle)
 		if err != nil {
 			return nil, err
 		}
-		xlsx.SetCellFormula(sheetTB12, fmt.Sprintf("AE%d", row), strings.Join(resultDifference, "-"))
+		xlsx.SetCellFormula(sheet, fmt.Sprintf("AE%d", row), strings.Join(resultDifference, "-"))
+
+		// typeList
+		sheet = "แยกประเภท"
+		headAccountNameStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "center",
+				Vertical:   "bottom",
+			},
+			// Border: []excelize.Border{
+			// 	{Type: "top", Color: "000000", Style: 1},
+			// 	{Type: "right", Color: "000000", Style: 1},
+			// 	{Type: "left", Color: "000000", Style: 1},
+			// 	{Type: "bottom", Color: "000000", Style: 1},
+			// },
+			// Fill: excelize.Fill{Type: "pattern", Color: []string{"F0F4DC"}, Pattern: 1},
+		})
+		if err != nil {
+			return nil, err
+		}
+		headAccountCodeStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "left",
+				Vertical:   "bottom",
+			},
+			// Border: []excelize.Border{
+			// 	{Type: "top", Color: "000000", Style: 1},
+			// 	{Type: "right", Color: "000000", Style: 1},
+			// 	{Type: "left", Color: "000000", Style: 1},
+			// 	{Type: "bottom", Color: "000000", Style: 1},
+			// },
+			// Fill: excelize.Fill{Type: "pattern", Color: []string{"F0F4DC"}, Pattern: 1},
+		})
+		if err != nil {
+			return nil, err
+		}
+		headAccountStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "center",
+				Vertical:   "center",
+			},
+			Border: []excelize.Border{
+				{Type: "top", Color: "000000", Style: 1},
+				{Type: "right", Color: "000000", Style: 1},
+				{Type: "left", Color: "000000", Style: 1},
+				{Type: "bottom", Color: "000000", Style: 1},
+			},
+			Fill: excelize.Fill{Type: "pattern", Color: []string{"F0F4DC"}, Pattern: 1},
+		})
+		if err != nil {
+			return nil, err
+		}
+		subjectAccountStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "center",
+				Vertical:   "center",
+			},
+			Border: []excelize.Border{
+				// {Type: "top", Color: "000000", Style: 1},
+				{Type: "right", Color: "000000", Style: 1},
+				{Type: "left", Color: "000000", Style: 1},
+				// {Type: "bottom", Color: "000000", Style: 1},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		detailAccountStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "left",
+				Vertical:   "center",
+			},
+			Border: []excelize.Border{
+				// {Type: "top", Color: "000000", Style: 1},
+				{Type: "right", Color: "000000", Style: 1},
+				{Type: "left", Color: "000000", Style: 1},
+				// {Type: "bottom", Color: "000000", Style: 1},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		priceAccountStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "right",
+				Vertical:   "center",
+			},
+			Border: []excelize.Border{
+				// {Type: "top", Color: "000000", Style: 1},
+				{Type: "right", Color: "000000", Style: 1},
+				{Type: "left", Color: "000000", Style: 1},
+				// {Type: "bottom", Color: "000000", Style: 1},
+			},
+			CustomNumFmt: &fm,
+		})
+		if err != nil {
+			return nil, err
+		}
+		endingAccountStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "left",
+				Vertical:   "center",
+			},
+			Border: []excelize.Border{
+				{Type: "top", Color: "000000", Style: 1},
+				// {Type: "right", Color: "000000", Style: 1},
+				// {Type: "left", Color: "000000", Style: 1},
+				// {Type: "bottom", Color: "000000", Style: 1},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		emptyEndingAccountStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "left",
+				Vertical:   "center",
+			},
+			Border: []excelize.Border{
+				{Type: "top", Color: "000000", Style: 1},
+				// {Type: "right", Color: "000000", Style: 1},
+				// {Type: "left", Color: "000000", Style: 1},
+				// {Type: "bottom", Color: "000000", Style: 1},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		row = 1
+		for i := 0; i < len(typeList); i++ {
+			t := typeList[i]
+			accNameColumn := fmt.Sprintf("A%d", row)
+			err = xlsx.MergeCell(sheet, accNameColumn, fmt.Sprintf("F%d", row))
+			if err != nil {
+				return nil, err
+			}
+			xlsx.SetCellValue(sheet, accNameColumn, t.Name)
+			err = xlsx.SetCellStyle(sheet, accNameColumn, accNameColumn, headAccountNameStyle)
+			if err != nil {
+				return nil, err
+			}
+			accCodeColumn := fmt.Sprintf("G%d", row)
+			xlsx.SetCellValue(sheet, accCodeColumn, fmt.Sprintf("เลขที่ %s", t.Code))
+			err = xlsx.SetCellStyle(sheet, accCodeColumn, accCodeColumn, headAccountCodeStyle)
+			if err != nil {
+				return nil, err
+			}
+			row++
+			yearColumn := fmt.Sprintf("A%d", row)
+			err = xlsx.MergeCell(sheet, yearColumn, fmt.Sprintf("B%d", row))
+			if err != nil {
+				return nil, err
+			}
+			xlsx.SetCellValue(sheet, yearColumn, strconv.Itoa(yearInt+543))
+			err = xlsx.SetCellStyle(sheet, yearColumn, fmt.Sprintf("B%d", row), headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			listColumn := fmt.Sprintf("C%d", row)
+			xlsx.SetCellValue(sheet, listColumn, "รายการ")
+			err = xlsx.MergeCell(sheet, listColumn, fmt.Sprintf("C%d", row+1))
+			if err != nil {
+				return nil, err
+			}
+			err = xlsx.SetCellStyle(sheet, listColumn, fmt.Sprintf("C%d", row+1), headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			frontAccountColumn := fmt.Sprintf("D%d", row)
+			xlsx.SetCellValue(sheet, frontAccountColumn, "หน้าบัญชี")
+			err = xlsx.MergeCell(sheet, frontAccountColumn, fmt.Sprintf("D%d", row+1))
+			if err != nil {
+				return nil, err
+			}
+			err = xlsx.SetCellStyle(sheet, frontAccountColumn, fmt.Sprintf("D%d", row+1), headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			drColumn := fmt.Sprintf("E%d", row)
+			xlsx.SetCellValue(sheet, drColumn, "เดบิต")
+			err = xlsx.SetCellStyle(sheet, drColumn, drColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			crColumn := fmt.Sprintf("F%d", row)
+			xlsx.SetCellValue(sheet, crColumn, "เครดิต")
+			err = xlsx.SetCellStyle(sheet, crColumn, crColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			totalAmountColumn := fmt.Sprintf("G%d", row)
+			xlsx.SetCellValue(sheet, totalAmountColumn, "ยอดคงเหลือ")
+			err = xlsx.SetCellStyle(sheet, totalAmountColumn, totalAmountColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			row++
+			monthColumn := fmt.Sprintf("A%d", row)
+			xlsx.SetCellValue(sheet, monthColumn, "เดือน")
+			err = xlsx.SetCellStyle(sheet, monthColumn, monthColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			dateColumn := fmt.Sprintf("B%d", row)
+			xlsx.SetCellValue(sheet, dateColumn, "วันที่")
+			err = xlsx.SetCellStyle(sheet, dateColumn, dateColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			bahtDrColumn := fmt.Sprintf("E%d", row)
+			xlsx.SetCellValue(sheet, bahtDrColumn, "บาท")
+			err = xlsx.SetCellStyle(sheet, bahtDrColumn, bahtDrColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			bahtCrColumn := fmt.Sprintf("F%d", row)
+			xlsx.SetCellValue(sheet, bahtCrColumn, "บาท")
+			err = xlsx.SetCellStyle(sheet, bahtCrColumn, bahtCrColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			bahtTotalAmountColumn := fmt.Sprintf("G%d", row)
+			xlsx.SetCellValue(sheet, bahtTotalAmountColumn, "บาท")
+			err = xlsx.SetCellStyle(sheet, bahtTotalAmountColumn, bahtTotalAmountColumn, headAccountStyle)
+			if err != nil {
+				return nil, err
+			}
+			row++
+			subjectColumnStart := ""
+			detailColumnStart := ""
+			frontAccountColumnStart := ""
+			amountColumnStart := ""
+			startEndingColumn := ""
+			endEndingColumn := ""
+			if fwMap[t.Code] != "" {
+				if subjectColumnStart == "" {
+					subjectColumnStart = fmt.Sprintf("A%d", row)
+				}
+				eDateColumn := fmt.Sprintf("B%d", row)
+				xlsx.SetCellValue(sheet, eDateColumn, 1)
+				detailColumn := fmt.Sprintf("C%d", row)
+				if detailColumnStart == "" {
+					detailColumnStart = detailColumn
+				}
+				xlsx.SetCellValue(sheet, detailColumn, "ยอดยกมา")
+				eFrontAccountColumn := fmt.Sprintf("D%d", row)
+				if frontAccountColumnStart == "" {
+					frontAccountColumnStart = eFrontAccountColumn
+				}
+				// xlsx.SetCellValue(sheet, eFrontAccountColumn, a.Number)
+				eDrColumn := fmt.Sprintf("E%d", row)
+				if amountColumnStart == "" {
+					amountColumnStart = eDrColumn
+				}
+				eCrColumn := fmt.Sprintf("F%d", row)
+				eTotalColumn := fmt.Sprintf("G%d", row)
+				accountFirstNo, _ := strconv.Atoi(t.Code)
+				if accountFirstNo > 1 || (t.Code == "1420-01" ||
+					t.Code == "1420-02" ||
+					t.Code == "1420-03" ||
+					t.Code == "1420-04") {
+					xlsx.SetCellFormula(sheet, eCrColumn, fwMap[t.Code])
+				} else {
+					xlsx.SetCellFormula(sheet, eDrColumn, fwMap[t.Code])
+				}
+				xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
+				row++
+			}
+			if t.MonthDetail != nil {
+				for i := 0; i < len(t.MonthDetail); i++ {
+					m := t.MonthDetail[i]
+					shortMonthColumn := fmt.Sprintf("A%d", row)
+					if subjectColumnStart == "" {
+						subjectColumnStart = shortMonthColumn
+						xlsx.SetCellValue(sheet, shortMonthColumn, m.Month)
+					} else {
+						xlsx.SetCellValue(sheet, fmt.Sprintf("A%d", row-1), m.Month)
+					}
+					if m.AccountDetail != nil {
+						for j := 0; j < len(m.AccountDetail); j++ {
+							a := m.AccountDetail[j]
+							eDateColumn := fmt.Sprintf("B%d", row)
+							xlsx.SetCellValue(sheet, eDateColumn, a.Date)
+							detailColumn := fmt.Sprintf("C%d", row)
+							if detailColumnStart == "" {
+								detailColumnStart = detailColumn
+							}
+							xlsx.SetCellValue(sheet, detailColumn, a.Description)
+							eFrontAccountColumn := fmt.Sprintf("D%d", row)
+							if frontAccountColumnStart == "" {
+								frontAccountColumnStart = eFrontAccountColumn
+							}
+							xlsx.SetCellValue(sheet, eFrontAccountColumn, a.Number)
+							eDrColumn := fmt.Sprintf("E%d", row)
+							if amountColumnStart == "" {
+								amountColumnStart = eDrColumn
+							}
+							xlsx.SetCellValue(sheet, eDrColumn, a.AmountDr)
+							eCrColumn := fmt.Sprintf("F%d", row)
+							xlsx.SetCellValue(sheet, eCrColumn, a.AmountCr)
+							eTotalColumn := fmt.Sprintf("G%d", row)
+
+							if j == 0 && fwMap[t.Code] == "" {
+								xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
+							} else {
+								xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s+%s-%s", fmt.Sprintf("G%d", row-1), fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
+							}
+							if len(m.AccountDetail) == j+1 {
+								row++
+							}
+							err = xlsx.SetCellStyle(sheet, subjectColumnStart, fmt.Sprintf("B%d", row), subjectAccountStyle)
+							if err != nil {
+								return nil, err
+							}
+							err = xlsx.SetCellStyle(sheet, detailColumnStart, fmt.Sprintf("C%d", row), detailAccountStyle)
+							if err != nil {
+								return nil, err
+							}
+							err = xlsx.SetCellStyle(sheet, frontAccountColumnStart, fmt.Sprintf("D%d", row), subjectAccountStyle)
+							if err != nil {
+								return nil, err
+							}
+							err = xlsx.SetCellStyle(sheet, amountColumnStart, fmt.Sprintf("G%d", row), priceAccountStyle)
+							if err != nil {
+								return nil, err
+							}
+							row++
+							startEndingColumn = fmt.Sprintf("A%d", row)
+							endEndingColumn = fmt.Sprintf("G%d", row)
+						}
+					}
+				}
+				err = xlsx.SetCellStyle(sheet, startEndingColumn, endEndingColumn, endingAccountStyle)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				if subjectColumnStart == "" {
+					subjectColumnStart = fmt.Sprintf("A%d", row)
+				} else {
+					subjectColumnStart = fmt.Sprintf("A%d", row-1)
+				}
+				err = xlsx.SetCellStyle(sheet, subjectColumnStart, fmt.Sprintf("B%d", row+1), subjectAccountStyle)
+				if err != nil {
+					return nil, err
+				}
+				if detailColumnStart == "" {
+					detailColumnStart = fmt.Sprintf("C%d", row)
+				} else {
+					detailColumnStart = fmt.Sprintf("C%d", row-1)
+				}
+				err = xlsx.SetCellStyle(sheet, detailColumnStart, fmt.Sprintf("C%d", row+1), detailAccountStyle)
+				if err != nil {
+					return nil, err
+				}
+				if frontAccountColumnStart == "" {
+					frontAccountColumnStart = fmt.Sprintf("D%d", row)
+				} else {
+					frontAccountColumnStart = fmt.Sprintf("D%d", row-1)
+				}
+				err = xlsx.SetCellStyle(sheet, frontAccountColumnStart, fmt.Sprintf("D%d", row+1), subjectAccountStyle)
+				if err != nil {
+					return nil, err
+				}
+				if amountColumnStart == "" {
+					amountColumnStart = fmt.Sprintf("E%d", row)
+				} else {
+					amountColumnStart = fmt.Sprintf("E%d", row-1)
+				}
+				err = xlsx.SetCellStyle(sheet, amountColumnStart, fmt.Sprintf("G%d", row+1), priceAccountStyle)
+				if err != nil {
+					return nil, err
+				}
+				err = xlsx.SetCellStyle(sheet, fmt.Sprintf("A%d", row+2), fmt.Sprintf("G%d", row+2), emptyEndingAccountStyle)
+				if err != nil {
+					return nil, err
+				}
+				row += 2
+			}
+			row++
+		}
 	}
 	return xlsx, nil
 }
