@@ -9,6 +9,7 @@ import (
 type DaybookDetail struct {
 	Id        primitive.ObjectID `bson:"_id" json:"id"`
 	Name      string             `bson:"name" json:"name"`
+	Detail    string             `bson:"detail" json:"detail"`
 	Type      string             `bson:"type" json:"type"`
 	Amount    float64            `bson:"amount" json:"amount"`
 	Account   primitive.ObjectID `bson:"account" json:"account"`

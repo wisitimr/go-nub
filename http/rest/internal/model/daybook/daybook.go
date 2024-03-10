@@ -188,6 +188,7 @@ type AccountDaybookDetail struct {
 	Id      primitive.ObjectID `bson:"_id" json:"id"`
 	Name    string             `bson:"name" json:"name"`
 	Type    string             `bson:"type" json:"type"`
+	Detail  string             `bson:"ledger" json:"ledger"`
 	Amount  float64            `bson:"amount" json:"amount"`
 	Daybook AccountDaybook     `bson:"daybook" json:"daybook"`
 }
@@ -239,9 +240,9 @@ type MonthDetail struct {
 }
 
 type AccountDetail struct {
-	Date        int     `json:"date"`
-	Description string  `json:"description"`
-	Number      string  `json:"number"`
-	AmountDr    float64 `json:"amountDr"`
-	AmountCr    float64 `json:"amountCr"`
+	Date     int     `json:"date"`
+	Detail   string  `json:"description"`
+	Number   string  `json:"number"`
+	AmountDr float64 `json:"amountDr"`
+	AmountCr float64 `json:"amountCr"`
 }

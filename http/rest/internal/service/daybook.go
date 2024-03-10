@@ -12,6 +12,7 @@ import (
 	mUser "findigitalservice/http/rest/internal/model/user"
 	"findigitalservice/http/rest/internal/util"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1294,13 +1295,13 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				for _, detail := range data.DaybookDetails {
 					var rowAccount mDaybook.AccountDetail
 					rowAccount.Number = detail.Daybook.Number
-					rowAccount.Description = detail.Name
+					rowAccount.Detail = detail.Detail
 					rowAccount.Date = detail.Daybook.TransactionDate.Day()
 					m := util.Month(detail.Daybook.TransactionDate)
-					// 1113-01 = BBL-S/A-# 101-883310-1
-					if detail.Type == "DR" && acc.Code == "1113-01" {
+					switch detail.Type {
+					case "DR":
 						rowAccount.AmountDr = detail.Amount
-					} else if detail.Type == "CR" {
+					case "CR":
 						rowAccount.AmountCr = detail.Amount
 					}
 					mapMonth[m] = append(mapMonth[m], rowAccount)
@@ -1419,6 +1420,12 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 					rowMonth.Month = k
 					rowMonth.AccountDetail = append(rowMonth.AccountDetail, v...)
 					rowType.MonthDetail = append(rowType.MonthDetail, rowMonth)
+					sort.Slice(rowMonth.AccountDetail[:], func(i, j int) bool {
+						if rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date {
+							return rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date
+						}
+						return rowMonth.AccountDetail[i].Number < rowMonth.AccountDetail[j].Number
+					})
 				}
 				typeList = append(typeList, rowType)
 				// s.logger.Error(fmt.Sprintf("E%d", row))
@@ -1755,10 +1762,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 					forward.Account = acc.Id
 					switch accountFirstNo {
 					case 1:
-						if acc.Code == "1420-01" ||
-							acc.Code == "1420-02" ||
-							acc.Code == "1420-03" ||
-							acc.Code == "1420-04" {
+						if strings.HasPrefix(acc.Code, "1420") {
 							forward.Type = "CR"
 						} else {
 							forward.Type = "DR"
@@ -2845,10 +2849,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				eCrColumn := fmt.Sprintf("F%d", row)
 				eTotalColumn := fmt.Sprintf("G%d", row)
 				accountFirstNo, _ := strconv.Atoi(t.Code)
-				if accountFirstNo > 1 || (t.Code == "1420-01" ||
-					t.Code == "1420-02" ||
-					t.Code == "1420-03" ||
-					t.Code == "1420-04") {
+				if accountFirstNo > 1 || strings.HasPrefix(t.Code, "1420") {
 					xlsx.SetCellFormula(sheet, eCrColumn, fwMap[t.Code])
 				} else {
 					xlsx.SetCellFormula(sheet, eDrColumn, fwMap[t.Code])
@@ -2875,7 +2876,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 							if detailColumnStart == "" {
 								detailColumnStart = detailColumn
 							}
-							xlsx.SetCellValue(sheet, detailColumn, a.Description)
+							xlsx.SetCellValue(sheet, detailColumn, a.Detail)
 							eFrontAccountColumn := fmt.Sprintf("D%d", row)
 							if frontAccountColumnStart == "" {
 								frontAccountColumnStart = eFrontAccountColumn

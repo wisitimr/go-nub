@@ -69,6 +69,7 @@ func (r daybookDetailRepository) Update(ctx context.Context, payload mDaybookDet
 	update := bson.M{
 		"$set": bson.M{
 			"name":      payload.Name,
+			"detail":    payload.Detail,
 			"type":      payload.Type,
 			"amount":    payload.Amount,
 			"account":   payload.Account,
