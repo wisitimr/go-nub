@@ -188,7 +188,7 @@ type AccountDaybookDetail struct {
 	Id      primitive.ObjectID `bson:"_id" json:"id"`
 	Name    string             `bson:"name" json:"name"`
 	Type    string             `bson:"type" json:"type"`
-	Detail  string             `bson:"ledger" json:"ledger"`
+	Detail  string             `bson:"detail" json:"detail"`
 	Amount  float64            `bson:"amount" json:"amount"`
 	Daybook AccountDaybook     `bson:"daybook" json:"daybook"`
 }

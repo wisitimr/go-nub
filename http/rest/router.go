@@ -133,6 +133,13 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 					r.Get("/financial/{company}/{year}", h.Daybook.GenerateFinancialStatement)
 				})
 			})
+			r.Route("/report", func(r chi.Router) {
+				r.Get("/ledger/account", h.Daybook.FindLedgerAccount)
+				r.Route("/generate", func(r chi.Router) {
+					r.Get("/excel/{id}", h.Daybook.GenerateExcel)
+					r.Get("/financial/{company}/{year}", h.Daybook.GenerateFinancialStatement)
+				})
+			})
 			r.Route("/daybook/detail", func(r chi.Router) {
 				r.Get("/", h.DaybookDetail.FindAll)
 				r.Get("/{id}", h.DaybookDetail.FindById)

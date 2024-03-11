@@ -894,6 +894,60 @@ func (s daybookService) Update(ctx context.Context, id string, payload mDaybook.
 	return res, nil
 }
 
+func (s daybookService) FindLedgerAccount(ctx context.Context, company string, year string) ([]mDaybook.FinancialStatement, error) {
+	var typeList []mDaybook.FinancialStatement
+	financial, err := s.Daybook.GenerateFinancialStatement(ctx, company, year)
+	if err != nil {
+		return nil, err
+	}
+	mapFin := make(map[string]mDaybook.DaybookFinancialStatement)
+	for _, v := range financial {
+		mapFin[v.Code] = v
+	}
+	query := make(map[string][]string)
+	query["company"] = append(query["company"], company)
+	account, err := s.Account.FindAll(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(account); i++ {
+		acc := account[i]
+		data := mapFin[acc.Code]
+		var rowType mDaybook.FinancialStatement
+		rowType.Code = acc.Code
+		rowType.Name = acc.Name
+		mapMonth := make(map[string][]mDaybook.AccountDetail)
+		for _, detail := range data.DaybookDetails {
+			var rowAccount mDaybook.AccountDetail
+			rowAccount.Number = detail.Daybook.Number
+			rowAccount.Detail = detail.Detail
+			rowAccount.Date = detail.Daybook.TransactionDate.Day()
+			m := util.Month(detail.Daybook.TransactionDate)
+			switch detail.Type {
+			case "DR":
+				rowAccount.AmountDr = detail.Amount
+			case "CR":
+				rowAccount.AmountCr = detail.Amount
+			}
+			mapMonth[m] = append(mapMonth[m], rowAccount)
+		}
+		for k, v := range mapMonth {
+			var rowMonth mDaybook.MonthDetail
+			rowMonth.Month = k
+			rowMonth.AccountDetail = append(rowMonth.AccountDetail, v...)
+			rowType.MonthDetail = append(rowType.MonthDetail, rowMonth)
+			sort.Slice(rowMonth.AccountDetail[:], func(i, j int) bool {
+				if rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date {
+					return rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date
+				}
+				return rowMonth.AccountDetail[i].Number < rowMonth.AccountDetail[j].Number
+			})
+		}
+		typeList = append(typeList, rowType)
+	}
+	return typeList, nil
+}
+
 func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {
@@ -2700,6 +2754,26 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 		if err != nil {
 			return nil, err
 		}
+		endingSumTextStyle, err := xlsx.NewStyle(&excelize.Style{
+			Font: &excelize.Font{
+				// Bold:   true,
+				Family: "TH Sarabun New",
+				Size:   14,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "right",
+				Vertical:   "right",
+			},
+			Border: []excelize.Border{
+				// {Type: "top", Color: "000000", Style: 1},
+				{Type: "right", Color: "000000", Style: 1},
+				{Type: "left", Color: "000000", Style: 1},
+				{Type: "bottom", Color: "000000", Style: 1},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
 		emptyEndingAccountStyle, err := xlsx.NewStyle(&excelize.Style{
 			Font: &excelize.Font{
 				// Bold:   true,
@@ -2826,10 +2900,15 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 			amountColumnStart := ""
 			startEndingColumn := ""
 			endEndingColumn := ""
+			startRow := 0
+			endRow := 0
+			endRowCal := 0
 			if fwMap[t.Code] != "" {
 				if subjectColumnStart == "" {
 					subjectColumnStart = fmt.Sprintf("A%d", row)
+					startRow = row
 				}
+				xlsx.SetCellValue(sheet, fmt.Sprintf("A%d", row), "มค")
 				eDateColumn := fmt.Sprintf("B%d", row)
 				xlsx.SetCellValue(sheet, eDateColumn, 1)
 				detailColumn := fmt.Sprintf("C%d", row)
@@ -2861,11 +2940,17 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				for i := 0; i < len(t.MonthDetail); i++ {
 					m := t.MonthDetail[i]
 					shortMonthColumn := fmt.Sprintf("A%d", row)
+					isSetMonth := true
 					if subjectColumnStart == "" {
 						subjectColumnStart = shortMonthColumn
-						xlsx.SetCellValue(sheet, shortMonthColumn, m.Month)
+						startRow = row
 					} else {
-						xlsx.SetCellValue(sheet, fmt.Sprintf("A%d", row-1), m.Month)
+						if m.Month == "มค" {
+							isSetMonth = false
+						}
+					}
+					if isSetMonth {
+						xlsx.SetCellValue(sheet, shortMonthColumn, m.Month)
 					}
 					if m.AccountDetail != nil {
 						for j := 0; j < len(m.AccountDetail); j++ {
@@ -2897,7 +2982,8 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 								xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s+%s-%s", fmt.Sprintf("G%d", row-1), fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
 							}
 							if len(m.AccountDetail) == j+1 {
-								row++
+								endRowCal = row
+								row += 2
 							}
 							err = xlsx.SetCellStyle(sheet, subjectColumnStart, fmt.Sprintf("B%d", row), subjectAccountStyle)
 							if err != nil {
@@ -2915,12 +3001,21 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 							if err != nil {
 								return nil, err
 							}
+							endRow = row
 							row++
 							startEndingColumn = fmt.Sprintf("A%d", row)
 							endEndingColumn = fmt.Sprintf("G%d", row)
 						}
 					}
 				}
+				xlsx.SetCellValue(sheet, fmt.Sprintf("C%d", endRow), "รวม")
+				err = xlsx.SetCellStyle(sheet, fmt.Sprintf("C%d", endRow), fmt.Sprintf("C%d", endRow), endingSumTextStyle)
+				if err != nil {
+					return nil, err
+				}
+				xlsx.SetCellFormula(sheet, fmt.Sprintf("E%d", endRow), fmt.Sprintf("SUM(%s:%s)", fmt.Sprintf("E%d", startRow), fmt.Sprintf("E%d", endRowCal)))
+				xlsx.SetCellFormula(sheet, fmt.Sprintf("F%d", endRow), fmt.Sprintf("SUM(%s:%s)", fmt.Sprintf("F%d", startRow), fmt.Sprintf("F%d", endRowCal)))
+				xlsx.SetCellFormula(sheet, fmt.Sprintf("G%d", endRow), fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", endRow), fmt.Sprintf("F%d", endRow)))
 				err = xlsx.SetCellStyle(sheet, startEndingColumn, endEndingColumn, endingAccountStyle)
 				if err != nil {
 					return nil, err

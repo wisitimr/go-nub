@@ -22,7 +22,7 @@ func (s ResponseDto) Respond(w http.ResponseWriter, r *http.Request, data interf
 		res.StatusCode = http.StatusInternalServerError
 		if v.Error() == mongo.ErrNoDocuments.Error() {
 			res.StatusCode = http.StatusNotFound
-		} else if v.Error() == "incorrect email or password, please try again. " {
+		} else if v.Error() == "incorrect username or password, please try again. " {
 			res.StatusCode = http.StatusBadRequest
 		} else if strings.HasPrefix(v.Error(), "this email address") {
 			res.StatusCode = http.StatusBadRequest
@@ -48,7 +48,7 @@ func (s ResponseDto) Respond(w http.ResponseWriter, r *http.Request, data interf
 		} else if method == "delete" {
 			res.Message = "ลบสำเร็จ"
 		}
-		w.WriteHeader(res.StatusCode)
-		json.NewEncoder(w).Encode(res)
 	}
+	w.WriteHeader(res.StatusCode)
+	json.NewEncoder(w).Encode(res)
 }
