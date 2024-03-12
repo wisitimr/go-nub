@@ -900,6 +900,11 @@ func (s daybookService) FindLedgerAccount(ctx context.Context, company string, y
 	if err != nil {
 		return nil, err
 	}
+	s.logger.Error(financial)
+	yearInt, err := strconv.Atoi(year)
+	if err != nil {
+		return nil, err
+	}
 	mapFin := make(map[string]mDaybook.DaybookFinancialStatement)
 	for _, v := range financial {
 		mapFin[v.Code] = v
@@ -916,34 +921,50 @@ func (s daybookService) FindLedgerAccount(ctx context.Context, company string, y
 		var rowType mDaybook.FinancialStatement
 		rowType.Code = acc.Code
 		rowType.Name = acc.Name
-		mapMonth := make(map[string][]mDaybook.AccountDetail)
+		var rowAccounts []mDaybook.AccountDetail
 		for _, detail := range data.DaybookDetails {
 			var rowAccount mDaybook.AccountDetail
+			rowAccount.Month = util.Month(detail.Daybook.TransactionDate)
 			rowAccount.Number = detail.Daybook.Number
 			rowAccount.Detail = detail.Detail
 			rowAccount.Date = detail.Daybook.TransactionDate.Day()
-			m := util.Month(detail.Daybook.TransactionDate)
 			switch detail.Type {
 			case "DR":
 				rowAccount.AmountDr = detail.Amount
 			case "CR":
 				rowAccount.AmountCr = detail.Amount
 			}
-			mapMonth[m] = append(mapMonth[m], rowAccount)
+			rowAccounts = append(rowAccounts, rowAccount)
 		}
-		for k, v := range mapMonth {
-			var rowMonth mDaybook.MonthDetail
-			rowMonth.Month = k
-			rowMonth.AccountDetail = append(rowMonth.AccountDetail, v...)
-			rowType.MonthDetail = append(rowType.MonthDetail, rowMonth)
-			sort.Slice(rowMonth.AccountDetail[:], func(i, j int) bool {
-				if rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date {
-					return rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date
+		if len(rowAccounts) > 0 {
+			query := make(map[string][]string)
+			query["account"] = append(query["account"], acc.Id.Hex())
+			query["year"] = append(query["year"], strconv.Itoa(yearInt-1))
+			query["company"] = append(query["company"], acc.Company.Hex())
+			fwr, err := s.ForwardAccount.FindOne(ctx, query)
+			if err == nil {
+				var rowFwAccount mDaybook.AccountDetail
+				rowFwAccount.Month = "มค"
+				rowFwAccount.Date = 1
+				rowFwAccount.Number = ""
+				rowFwAccount.Detail = "ยกยอดมา"
+				switch fwr.Type {
+				case "DR":
+					rowFwAccount.AmountDr = fwr.Amount
+				case "CR":
+					rowFwAccount.AmountCr = fwr.Amount
 				}
-				return rowMonth.AccountDetail[i].Number < rowMonth.AccountDetail[j].Number
+				rowAccounts = append([]mDaybook.AccountDetail{rowFwAccount}, rowAccounts...)
+			}
+			sort.Slice(rowAccounts[:], func(i, j int) bool {
+				if rowAccounts[i].Date < rowAccounts[j].Date {
+					return rowAccounts[i].Date < rowAccounts[j].Date
+				}
+				return rowAccounts[i].Number < rowAccounts[j].Number
 			})
+			rowType.AccountDetail = rowAccounts
+			typeList = append(typeList, rowType)
 		}
-		typeList = append(typeList, rowType)
 	}
 	return typeList, nil
 }
@@ -1345,20 +1366,20 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				var rowType mDaybook.FinancialStatement
 				rowType.Code = acc.Code
 				rowType.Name = acc.Name
-				mapMonth := make(map[string][]mDaybook.AccountDetail)
+				var rowAccounts []mDaybook.AccountDetail
 				for _, detail := range data.DaybookDetails {
 					var rowAccount mDaybook.AccountDetail
+					rowAccount.Month = util.Month(detail.Daybook.TransactionDate)
+					rowAccount.Date = detail.Daybook.TransactionDate.Day()
 					rowAccount.Number = detail.Daybook.Number
 					rowAccount.Detail = detail.Detail
-					rowAccount.Date = detail.Daybook.TransactionDate.Day()
-					m := util.Month(detail.Daybook.TransactionDate)
 					switch detail.Type {
 					case "DR":
 						rowAccount.AmountDr = detail.Amount
 					case "CR":
 						rowAccount.AmountCr = detail.Amount
 					}
-					mapMonth[m] = append(mapMonth[m], rowAccount)
+					rowAccounts = append(rowAccounts, rowAccount)
 					if util.IsValidMonth(1, detail.Daybook.TransactionDate) {
 						switch detail.Type {
 						case "DR":
@@ -1469,19 +1490,6 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 						}
 					}
 				}
-				for k, v := range mapMonth {
-					var rowMonth mDaybook.MonthDetail
-					rowMonth.Month = k
-					rowMonth.AccountDetail = append(rowMonth.AccountDetail, v...)
-					rowType.MonthDetail = append(rowType.MonthDetail, rowMonth)
-					sort.Slice(rowMonth.AccountDetail[:], func(i, j int) bool {
-						if rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date {
-							return rowMonth.AccountDetail[i].Date < rowMonth.AccountDetail[j].Date
-						}
-						return rowMonth.AccountDetail[i].Number < rowMonth.AccountDetail[j].Number
-					})
-				}
-				typeList = append(typeList, rowType)
 				// s.logger.Error(fmt.Sprintf("E%d", row))
 				totalForwardingDr := fmt.Sprintf("C%d", row)
 				if forwardingDr == 0 {
@@ -1530,6 +1538,28 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 						fwMap[acc.Code] = fmt.Sprintf("'%s'!%s", sheet, forwardCrColumn)
 					}
 				}
+				if err == nil {
+					var rowFwAccount mDaybook.AccountDetail
+					rowFwAccount.Month = "มค"
+					rowFwAccount.Date = 1
+					rowFwAccount.Number = ""
+					rowFwAccount.Detail = "ยกยอดมา"
+					switch fwr.Type {
+					case "DR":
+						rowFwAccount.AmountDr = fwr.Amount
+					case "CR":
+						rowFwAccount.AmountCr = fwr.Amount
+					}
+					rowAccounts = append([]mDaybook.AccountDetail{rowFwAccount}, rowAccounts...)
+				}
+				sort.Slice(rowAccounts[:], func(i, j int) bool {
+					if rowAccounts[i].Date < rowAccounts[j].Date {
+						return rowAccounts[i].Date < rowAccounts[j].Date
+					}
+					return rowAccounts[i].Number < rowAccounts[j].Number
+				})
+				rowType.AccountDetail = rowAccounts
+				typeList = append(typeList, rowType)
 				janTotalDr := fmt.Sprintf("E%d", row)
 				if janDr == 0 {
 					style = blankStyle
@@ -2903,110 +2933,83 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 			startRow := 0
 			endRow := 0
 			endRowCal := 0
-			if fwMap[t.Code] != "" {
-				if subjectColumnStart == "" {
-					subjectColumnStart = fmt.Sprintf("A%d", row)
-					startRow = row
-				}
-				xlsx.SetCellValue(sheet, fmt.Sprintf("A%d", row), "มค")
-				eDateColumn := fmt.Sprintf("B%d", row)
-				xlsx.SetCellValue(sheet, eDateColumn, 1)
-				detailColumn := fmt.Sprintf("C%d", row)
-				if detailColumnStart == "" {
-					detailColumnStart = detailColumn
-				}
-				xlsx.SetCellValue(sheet, detailColumn, "ยอดยกมา")
-				eFrontAccountColumn := fmt.Sprintf("D%d", row)
-				if frontAccountColumnStart == "" {
-					frontAccountColumnStart = eFrontAccountColumn
-				}
-				// xlsx.SetCellValue(sheet, eFrontAccountColumn, a.Number)
-				eDrColumn := fmt.Sprintf("E%d", row)
-				if amountColumnStart == "" {
-					amountColumnStart = eDrColumn
-				}
-				eCrColumn := fmt.Sprintf("F%d", row)
-				eTotalColumn := fmt.Sprintf("G%d", row)
-				accountFirstNo, _ := strconv.Atoi(t.Code)
-				if accountFirstNo > 1 || strings.HasPrefix(t.Code, "1420") {
-					xlsx.SetCellFormula(sheet, eCrColumn, fwMap[t.Code])
-				} else {
-					xlsx.SetCellFormula(sheet, eDrColumn, fwMap[t.Code])
-				}
-				xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
-				row++
-			}
-			if t.MonthDetail != nil {
-				for i := 0; i < len(t.MonthDetail); i++ {
-					m := t.MonthDetail[i]
-					shortMonthColumn := fmt.Sprintf("A%d", row)
-					isSetMonth := true
-					if subjectColumnStart == "" {
-						subjectColumnStart = shortMonthColumn
+			monthTmp := ""
+			if t.AccountDetail != nil {
+				for j := 0; j < len(t.AccountDetail); j++ {
+					if j == 0 {
 						startRow = row
+					}
+					a := t.AccountDetail[j]
+					if monthTmp != a.Month {
+						subjectColumnStart = ""
+						monthTmp = ""
+					}
+					shortMonthColumn := fmt.Sprintf("A%d", row)
+					if subjectColumnStart == "" {
+						monthTmp = a.Month
+						subjectColumnStart = shortMonthColumn
+						xlsx.SetCellValue(sheet, shortMonthColumn, a.Month)
+					}
+					eDateColumn := fmt.Sprintf("B%d", row)
+					xlsx.SetCellValue(sheet, eDateColumn, a.Date)
+					detailColumn := fmt.Sprintf("C%d", row)
+					if detailColumnStart == "" {
+						detailColumnStart = detailColumn
+					}
+					xlsx.SetCellValue(sheet, detailColumn, a.Detail)
+					eFrontAccountColumn := fmt.Sprintf("D%d", row)
+					if frontAccountColumnStart == "" {
+						frontAccountColumnStart = eFrontAccountColumn
+					}
+					xlsx.SetCellValue(sheet, eFrontAccountColumn, a.Number)
+					eDrColumn := fmt.Sprintf("E%d", row)
+					if amountColumnStart == "" {
+						amountColumnStart = eDrColumn
+					}
+					eCrColumn := fmt.Sprintf("F%d", row)
+					eTotalColumn := fmt.Sprintf("G%d", row)
+					if fwMap[t.Code] != "" {
+						accountFirstNo, _ := strconv.Atoi(t.Code)
+						if accountFirstNo > 1 || strings.HasPrefix(t.Code, "1420") {
+							xlsx.SetCellFormula(sheet, eCrColumn, fwMap[t.Code])
+						} else {
+							xlsx.SetCellFormula(sheet, eDrColumn, fwMap[t.Code])
+						}
 					} else {
-						if m.Month == "มค" {
-							isSetMonth = false
-						}
+						xlsx.SetCellValue(sheet, eDrColumn, a.AmountDr)
+						xlsx.SetCellValue(sheet, eCrColumn, a.AmountCr)
 					}
-					if isSetMonth {
-						xlsx.SetCellValue(sheet, shortMonthColumn, m.Month)
-					}
-					if m.AccountDetail != nil {
-						for j := 0; j < len(m.AccountDetail); j++ {
-							a := m.AccountDetail[j]
-							eDateColumn := fmt.Sprintf("B%d", row)
-							xlsx.SetCellValue(sheet, eDateColumn, a.Date)
-							detailColumn := fmt.Sprintf("C%d", row)
-							if detailColumnStart == "" {
-								detailColumnStart = detailColumn
-							}
-							xlsx.SetCellValue(sheet, detailColumn, a.Detail)
-							eFrontAccountColumn := fmt.Sprintf("D%d", row)
-							if frontAccountColumnStart == "" {
-								frontAccountColumnStart = eFrontAccountColumn
-							}
-							xlsx.SetCellValue(sheet, eFrontAccountColumn, a.Number)
-							eDrColumn := fmt.Sprintf("E%d", row)
-							if amountColumnStart == "" {
-								amountColumnStart = eDrColumn
-							}
-							xlsx.SetCellValue(sheet, eDrColumn, a.AmountDr)
-							eCrColumn := fmt.Sprintf("F%d", row)
-							xlsx.SetCellValue(sheet, eCrColumn, a.AmountCr)
-							eTotalColumn := fmt.Sprintf("G%d", row)
 
-							if j == 0 && fwMap[t.Code] == "" {
-								xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
-							} else {
-								xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s+%s-%s", fmt.Sprintf("G%d", row-1), fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
-							}
-							if len(m.AccountDetail) == j+1 {
-								endRowCal = row
-								row += 2
-							}
-							err = xlsx.SetCellStyle(sheet, subjectColumnStart, fmt.Sprintf("B%d", row), subjectAccountStyle)
-							if err != nil {
-								return nil, err
-							}
-							err = xlsx.SetCellStyle(sheet, detailColumnStart, fmt.Sprintf("C%d", row), detailAccountStyle)
-							if err != nil {
-								return nil, err
-							}
-							err = xlsx.SetCellStyle(sheet, frontAccountColumnStart, fmt.Sprintf("D%d", row), subjectAccountStyle)
-							if err != nil {
-								return nil, err
-							}
-							err = xlsx.SetCellStyle(sheet, amountColumnStart, fmt.Sprintf("G%d", row), priceAccountStyle)
-							if err != nil {
-								return nil, err
-							}
-							endRow = row
-							row++
-							startEndingColumn = fmt.Sprintf("A%d", row)
-							endEndingColumn = fmt.Sprintf("G%d", row)
-						}
+					if j == 0 || fwMap[t.Code] != "" {
+						xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s-%s", fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
+					} else {
+						xlsx.SetCellFormula(sheet, eTotalColumn, fmt.Sprintf("%s+%s-%s", fmt.Sprintf("G%d", row-1), fmt.Sprintf("E%d", row), fmt.Sprintf("F%d", row)))
 					}
+					if len(t.AccountDetail) == j+1 {
+						endRowCal = row
+						row += 2
+					}
+					delete(fwMap, t.Code)
+					err = xlsx.SetCellStyle(sheet, subjectColumnStart, fmt.Sprintf("B%d", row), subjectAccountStyle)
+					if err != nil {
+						return nil, err
+					}
+					err = xlsx.SetCellStyle(sheet, detailColumnStart, fmt.Sprintf("C%d", row), detailAccountStyle)
+					if err != nil {
+						return nil, err
+					}
+					err = xlsx.SetCellStyle(sheet, frontAccountColumnStart, fmt.Sprintf("D%d", row), subjectAccountStyle)
+					if err != nil {
+						return nil, err
+					}
+					err = xlsx.SetCellStyle(sheet, amountColumnStart, fmt.Sprintf("G%d", row), priceAccountStyle)
+					if err != nil {
+						return nil, err
+					}
+					endRow = row
+					row++
+					startEndingColumn = fmt.Sprintf("A%d", row)
+					endEndingColumn = fmt.Sprintf("G%d", row)
 				}
 				xlsx.SetCellValue(sheet, fmt.Sprintf("C%d", endRow), "รวม")
 				err = xlsx.SetCellStyle(sheet, fmt.Sprintf("C%d", endRow), fmt.Sprintf("C%d", endRow), endingSumTextStyle)

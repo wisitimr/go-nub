@@ -28,6 +28,8 @@ func (s ResponseDto) Respond(w http.ResponseWriter, r *http.Request, data interf
 			res.StatusCode = http.StatusBadRequest
 		}
 		res.Message = v.Error()
+		w.WriteHeader(res.StatusCode)
+		json.NewEncoder(w).Encode(res)
 	case *excelize.File:
 		f, _ := data.(*excelize.File)
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -48,7 +50,7 @@ func (s ResponseDto) Respond(w http.ResponseWriter, r *http.Request, data interf
 		} else if method == "delete" {
 			res.Message = "ลบสำเร็จ"
 		}
+		w.WriteHeader(res.StatusCode)
+		json.NewEncoder(w).Encode(res)
 	}
-	w.WriteHeader(res.StatusCode)
-	json.NewEncoder(w).Encode(res)
 }

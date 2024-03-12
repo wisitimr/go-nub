@@ -55,6 +55,7 @@ func (h daybookHandler) FindById(w http.ResponseWriter, r *http.Request) {
 func (h daybookHandler) GenerateExcel(w http.ResponseWriter, r *http.Request) {
 	f, err := h.daybookService.GenerateExcel(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
+		h.logger.Error(err)
 		h.Respond(w, r, err, 0)
 		return
 	}

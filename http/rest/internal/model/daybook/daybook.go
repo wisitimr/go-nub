@@ -229,19 +229,20 @@ type Document struct {
 }
 
 type FinancialStatement struct {
-	Code        string        `json:"code"`
-	Name        string        `json:"name"`
-	MonthDetail []MonthDetail `json:"monthDetail"`
-}
-
-type MonthDetail struct {
-	Month         string          `json:"month"`
+	Code          string          `json:"code"`
+	Name          string          `json:"name"`
 	AccountDetail []AccountDetail `json:"accountDetail"`
 }
 
+// type MonthDetail struct {
+// 	Month         string
+// 	AccountDetail []AccountDetail `json:"accountDetail"`
+// }
+
 type AccountDetail struct {
+	Month    string  `json:"month"`
 	Date     int     `json:"date"`
-	Detail   string  `json:"description"`
+	Detail   string  `json:"detail"`
 	Number   string  `json:"number"`
 	AmountDr float64 `json:"amountDr"`
 	AmountCr float64 `json:"amountCr"`
