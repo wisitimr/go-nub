@@ -900,7 +900,6 @@ func (s daybookService) FindLedgerAccount(ctx context.Context, company string, y
 	if err != nil {
 		return nil, err
 	}
-	s.logger.Error(financial)
 	yearInt, err := strconv.Atoi(year)
 	if err != nil {
 		return nil, err

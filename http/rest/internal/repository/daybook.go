@@ -502,7 +502,6 @@ func (r daybookRepository) GenerateFinancialStatement(ctx context.Context, compa
 		"$gte": from,
 		"$lt":  to,
 	}}
-	r.logger.Error(filter)
 	pipeline := []bson.M{
 		{
 			"$lookup": bson.M{
@@ -580,6 +579,5 @@ func (r daybookRepository) GenerateFinancialStatement(ctx context.Context, compa
 	if err = cur.All(ctx, &accounts); err != nil {
 		r.logger.Error(err)
 	}
-	// r.logger.Error(accounts)
 	return accounts, nil
 }

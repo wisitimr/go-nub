@@ -109,7 +109,6 @@ func (h userHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := h.userService.Login(r.Context(), payload)
 	if err != nil {
-		h.logger.Error(err)
 		h.Respond(w, r, err, 0)
 		return
 	}
