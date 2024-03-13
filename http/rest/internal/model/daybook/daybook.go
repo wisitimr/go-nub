@@ -234,11 +234,6 @@ type FinancialStatement struct {
 	AccountDetail []AccountDetail `json:"accountDetail"`
 }
 
-// type MonthDetail struct {
-// 	Month         string
-// 	AccountDetail []AccountDetail `json:"accountDetail"`
-// }
-
 type AccountDetail struct {
 	Month    string  `json:"month"`
 	Date     int     `json:"date"`
@@ -246,4 +241,72 @@ type AccountDetail struct {
 	Number   string  `json:"number"`
 	AmountDr float64 `json:"amountDr"`
 	AmountCr float64 `json:"amountCr"`
+}
+
+type AccountBalance struct {
+	AccountGroup string                `json:"accountGroup"`
+	SumForwardDr float64               `json:"sumForwardDr"`
+	SumForwardCr float64               `json:"sumForwardCr"`
+	SumJanDr     float64               `json:"sumJanDr"`
+	SumJanCr     float64               `json:"sumJanCr"`
+	SumFebDr     float64               `json:"sumFebDr"`
+	SumFebCr     float64               `json:"sumFebCr"`
+	SumMarDr     float64               `json:"sumMarDr"`
+	SumMarCr     float64               `json:"sumMarCr"`
+	SumAprDr     float64               `json:"sumAprDr"`
+	SumAprCr     float64               `json:"sumAprCr"`
+	SumMayDr     float64               `json:"sumMayDr"`
+	SumMayCr     float64               `json:"sumMayCr"`
+	SumJunDr     float64               `json:"sumJunDr"`
+	SumJunCr     float64               `json:"sumJunCr"`
+	SumJulDr     float64               `json:"sumJulDr"`
+	SumJulCr     float64               `json:"sumJulCr"`
+	SumAugDr     float64               `json:"sumAugDr"`
+	SumAugCr     float64               `json:"sumAugCr"`
+	SumSepDr     float64               `json:"sumSepDr"`
+	SumSepCr     float64               `json:"sumSepCr"`
+	SumOctDr     float64               `json:"sumOctDr"`
+	SumOctCr     float64               `json:"sumOctCr"`
+	SumNovDr     float64               `json:"sumNovDr"`
+	SumNovCr     float64               `json:"sumNovCr"`
+	SumDecDr     float64               `json:"sumDecDr"`
+	SumDecCr     float64               `json:"sumDecCr"`
+	SumTotalDr   float64               `json:"sumTotalDr"`
+	SumTotalCr   float64               `json:"sumTotalCr"`
+	SumBalance   float64               `json:"sumBalance"`
+	Child        []ChildAccountBalance `json:"child"`
+}
+
+type ChildAccountBalance struct {
+	AccountCode string  `json:"accountCode"`
+	AccountName string  `json:"accountName"`
+	ForwardDr   float64 `json:"forwardDr"`
+	ForwardCr   float64 `json:"forwardCr"`
+	JanDr       float64 `json:"janDr"`
+	JanCr       float64 `json:"janCr"`
+	FebDr       float64 `json:"febDr"`
+	FebCr       float64 `json:"febCr"`
+	MarDr       float64 `json:"marDr"`
+	MarCr       float64 `json:"marCr"`
+	AprDr       float64 `json:"aprDr"`
+	AprCr       float64 `json:"aprCr"`
+	MayDr       float64 `json:"mayDr"`
+	MayCr       float64 `json:"mayCr"`
+	JunDr       float64 `json:"junDr"`
+	JunCr       float64 `json:"junCr"`
+	JulDr       float64 `json:"julDr"`
+	JulCr       float64 `json:"julCr"`
+	AugDr       float64 `json:"augDr"`
+	AugCr       float64 `json:"augCr"`
+	SepDr       float64 `json:"sepDr"`
+	SepCr       float64 `json:"sepCr"`
+	OctDr       float64 `json:"octDr"`
+	OctCr       float64 `json:"octCr"`
+	NovDr       float64 `json:"novDr"`
+	NovCr       float64 `json:"novCr"`
+	DecDr       float64 `json:"decDr"`
+	DecCr       float64 `json:"decCr"`
+	TotalDr     float64 `json:"totalDr"`
+	TotalCr     float64 `json:"totalCr"`
+	Balance     float64 `json:"balance"`
 }

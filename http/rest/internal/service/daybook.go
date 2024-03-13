@@ -968,6 +968,239 @@ func (s daybookService) FindLedgerAccount(ctx context.Context, company string, y
 	return typeList, nil
 }
 
+func (s daybookService) FindAccountBalance(ctx context.Context, company string, year string) ([]mDaybook.AccountBalance, error) {
+	var balances []mDaybook.AccountBalance
+	financial, err := s.Daybook.GenerateFinancialStatement(ctx, company, year)
+	if err != nil {
+		return nil, err
+	}
+	yearInt, err := strconv.Atoi(year)
+	if err != nil {
+		return nil, err
+	}
+	mapFin := make(map[string]mDaybook.DaybookFinancialStatement)
+	for _, v := range financial {
+		mapFin[v.Code] = v
+	}
+	query := make(map[string][]string)
+	query["company"] = append(query["company"], company)
+	account, err := s.Account.FindAll(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	var childdren []mDaybook.ChildAccountBalance
+	balanceMap := make(map[string]mDaybook.AccountBalance)
+	for i := 0; i < len(account); i++ {
+		acc := account[i]
+		data := mapFin[acc.Code]
+		var child mDaybook.ChildAccountBalance
+		child.AccountCode = acc.Code
+		child.AccountName = acc.Name
+		query := make(map[string][]string)
+		query["account"] = append(query["account"], acc.Id.Hex())
+		query["year"] = append(query["year"], strconv.Itoa(yearInt-1))
+		query["company"] = append(query["company"], acc.Company.Hex())
+		fwr, err := s.ForwardAccount.FindOne(ctx, query)
+		if err == nil {
+			switch fwr.Type {
+			case "DR":
+				child.ForwardDr = fwr.Amount
+			case "CR":
+				child.ForwardDr = fwr.Amount
+			}
+		}
+		for _, detail := range data.DaybookDetails {
+			if util.IsValidMonth(1, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.JanDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.JanCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(2, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.FebDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.FebCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(3, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.MarDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.MarCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(4, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.AprDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.AprCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(5, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.MayDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.MayCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(6, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.JunDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.JunCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(7, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.JulDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.JulCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(8, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.AugDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.AugCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(9, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.SepDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.SepCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(10, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.OctDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.OctCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(11, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.NovDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.NovCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			} else if util.IsValidMonth(12, detail.Daybook.TransactionDate) {
+				switch detail.Type {
+				case "DR":
+					child.DecDr += detail.Amount
+					child.TotalDr += detail.Amount
+				case "CR":
+					child.DecCr += detail.Amount
+					child.TotalCr += detail.Amount
+				}
+			}
+		}
+		child.Balance = child.TotalDr - child.TotalCr
+		childdren = append(childdren, child)
+	}
+	for _, c := range childdren {
+		groupCode, _ := strconv.Atoi(c.AccountCode[0:1])
+		accountGroup := ""
+		if groupCode == 1 {
+			accountGroup = "assets"
+		} else if groupCode == 2 {
+			accountGroup = "liability"
+		} else if groupCode == 3 {
+			accountGroup = "shareholdersEquity"
+		} else if groupCode == 4 {
+			accountGroup = "income"
+		} else if groupCode > 5 || groupCode <= 9 {
+			accountGroup = "expense"
+		}
+		var bl mDaybook.AccountBalance
+		if val, ok := balanceMap[accountGroup]; ok {
+			bl = val
+		}
+		bl.SumForwardDr += c.JanDr
+		bl.SumForwardCr += c.TotalDr
+		bl.SumJanDr += c.JanDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumJanCr += c.JanCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumFebDr += c.FebDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumFebCr += c.FebCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumMarDr += c.MarDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumMarCr += c.MarCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumAprDr += c.AprDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumAprCr += c.AprCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumMayDr += c.MayDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumMayCr += c.MayCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumJunDr += c.JunDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumJunCr += c.JunCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumJulDr += c.JulDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumJulCr += c.JulCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumAugDr += c.AugDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumAugCr += c.AugCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumSepDr += c.SepDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumSepCr += c.SepCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumOctDr += c.OctDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumOctCr += c.OctCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumNovDr += c.NovDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumNovCr += c.NovCr
+		bl.SumTotalCr += c.TotalCr
+		bl.SumDecDr += c.DecDr
+		bl.SumTotalDr += c.TotalDr
+		bl.SumDecCr += c.DecCr
+		bl.SumTotalCr += c.TotalCr
+		bl.Child = append(bl.Child, c)
+		balanceMap[accountGroup] = bl
+	}
+	for key, value := range balanceMap {
+		value.AccountGroup = key
+		balances = append(balances, value)
+	}
+	return balances, nil
+}
+
 func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {
@@ -1249,8 +1482,6 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				var novCr float64
 				var decDr float64
 				var decCr float64
-				var forwardingDr float64
-				var forwardingCr float64
 				if len(totalAccountForwardDr) == 0 {
 					totalAccountForwardDr = append(totalAccountForwardDr, fmt.Sprintf("C%d", row))
 				}
@@ -1489,26 +1720,14 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 						}
 					}
 				}
-				// s.logger.Error(fmt.Sprintf("E%d", row))
+				s.logger.Error(fmt.Sprintf("E%d", row))
 				totalForwardingDr := fmt.Sprintf("C%d", row)
-				if forwardingDr == 0 {
-					style = blankStyle
-				} else {
-					xlsx.SetCellValue(sheet, totalForwardingDr, forwardingDr)
-					style = priceStyle
-				}
-				err = xlsx.SetCellStyle(sheet, totalForwardingDr, totalForwardingDr, style)
+				err = xlsx.SetCellStyle(sheet, totalForwardingDr, totalForwardingDr, priceStyle)
 				if err != nil {
 					return nil, err
 				}
 				totalForwardingCr := fmt.Sprintf("D%d", row)
-				if forwardingCr == 0 {
-					style = blankStyle
-				} else {
-					xlsx.SetCellValue(sheet, totalForwardingCr, forwardingCr)
-					style = priceStyle
-				}
-				err = xlsx.SetCellStyle(sheet, totalForwardingCr, totalForwardingCr, style)
+				err = xlsx.SetCellStyle(sheet, totalForwardingCr, totalForwardingCr, priceStyle)
 				if err != nil {
 					return nil, err
 				}
@@ -1835,12 +2054,8 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if err != nil {
 					return nil, err
 				}
-				twoDigit := fmt.Sprintf("%.2f", sumDrTmp-sumCrTmp)
-				e, err := strconv.ParseFloat(twoDigit, 64)
-				if err != nil {
-					return nil, err
-				}
-				if e != 0 && accountFirstNo <= 3 {
+				sumTmp := sumDrTmp - sumCrTmp
+				if sumTmp != 0 && accountFirstNo <= 3 {
 					var forward mForwardAccount.ForwardAccount
 					forward.Account = acc.Id
 					switch accountFirstNo {
@@ -1855,7 +2070,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 					case 3:
 						forward.Type = "CR"
 					}
-					forward.Amount = e
+					forward.Amount = sumTmp
 					forward.Year = yearInt
 					forward.Company = acc.Company
 					forward.UpdatedBy = user.Id

@@ -101,6 +101,15 @@ func (h daybookHandler) FindLedgerAccount(w http.ResponseWriter, r *http.Request
 	h.Respond(w, r, f, http.StatusOK)
 }
 
+func (h daybookHandler) FindAccountBalance(w http.ResponseWriter, r *http.Request) {
+	f, err := h.daybookService.FindAccountBalance(r.Context(), chi.URLParam(r, "company"), chi.URLParam(r, "year"))
+	if err != nil {
+		h.Respond(w, r, err, 0)
+		return
+	}
+	h.Respond(w, r, f, http.StatusOK)
+}
+
 func (h daybookHandler) GenerateFinancialStatement(w http.ResponseWriter, r *http.Request) {
 	f, err := h.daybookService.GenerateFinancialStatement(r.Context(), chi.URLParam(r, "company"), chi.URLParam(r, "year"))
 	if err != nil {

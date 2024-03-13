@@ -13,6 +13,7 @@ type DaybookService interface {
 	FindAll(ctx context.Context, query map[string][]string) ([]mDaybook.DaybookList, error)
 	FindById(ctx context.Context, id string) (mDaybook.DaybookResponse, error)
 	FindLedgerAccount(ctx context.Context, company string, year string) ([]mDaybook.FinancialStatement, error)
+	FindAccountBalance(ctx context.Context, company string, year string) ([]mDaybook.AccountBalance, error)
 	GenerateExcel(ctx context.Context, id string) (*excelize.File, error)
 	GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error)
 	Create(ctx context.Context, payload mDaybook.DaybookPayload) (mDaybook.DaybookPayload, error)
