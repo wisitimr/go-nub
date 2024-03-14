@@ -1194,7 +1194,8 @@ func (s daybookService) FindAccountBalance(ctx context.Context, company string, 
 		bl.Child = append(bl.Child, c)
 		balanceMap[accountGroup] = bl
 	}
-	for key, value := range balanceMap {
+	for _, key := range []string{"assets", "liability", "shareholdersEquity", "income", "expense"} {
+		value := balanceMap[key]
 		value.AccountGroup = key
 		balances = append(balances, value)
 	}
