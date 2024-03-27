@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"findigitalservice/config"
-	"findigitalservice/http/rest"
+	rest "findigitalservice/internal"
+	"findigitalservice/internal/config"
 	"log"
 )
 
