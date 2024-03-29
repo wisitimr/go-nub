@@ -73,7 +73,7 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (*excelize
 	if err != nil {
 		return nil, err
 	}
-	xlsx, err := excelize.OpenFile(fmt.Sprintf("config/templates/daybook/%s.xlsx", res.Company.Id.Hex()))
+	xlsx, err := excelize.OpenFile(fmt.Sprintf("internal/config/templates/daybook/%s.xlsx", res.Company.Id.Hex()))
 
 	if err != nil {
 		return nil, err
@@ -1191,17 +1191,19 @@ func (s daybookService) FindAccountBalance(ctx context.Context, company string, 
 		bl.SumTotalDr += c.TotalDr
 		bl.SumDecCr += c.DecCr
 		bl.SumTotalCr += c.TotalCr
+		bl.SumBalance += c.Balance
 		bl.Child = append(bl.Child, c)
 		balanceMap[accountGroup] = bl
 	}
 	for _, key := range []string{"assets", "liability", "shareholdersEquity", "income", "expense"} {
 		value := balanceMap[key]
 		value.AccountGroup = key
-		balances = append(balances, value)
+		if value.SumBalance != 0 {
+			balances = append(balances, value)
+		}
 	}
 	return balances, nil
 }
-
 func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {
@@ -1221,7 +1223,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 		for _, v := range financial {
 			mapFin[v.Code] = v
 		}
-		xlsx, err = excelize.OpenFile(fmt.Sprintf("config/templates/financial_statement/%s.xlsx", company))
+		xlsx, err = excelize.OpenFile(fmt.Sprintf("internal/config/templates/financial_statement/%s.xlsx", company))
 
 		if err != nil {
 			s.logger.Error(err)
