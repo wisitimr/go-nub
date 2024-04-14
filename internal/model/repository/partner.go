@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mPartner "findigitalservice/internal/model/partner"
+	mPartner "nub/internal/model/partner"
 )
 
 type PartnerRepository interface {

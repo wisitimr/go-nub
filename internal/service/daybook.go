@@ -2,16 +2,16 @@ package service
 
 import (
 	"context"
-	"findigitalservice/internal/auth"
-	mDaybook "findigitalservice/internal/model/daybook"
-	mDaybookDetail "findigitalservice/internal/model/daybook_detail"
-	mForwardAccount "findigitalservice/internal/model/forward_account"
-	mRepo "findigitalservice/internal/model/repository"
-	mRes "findigitalservice/internal/model/response"
-	mService "findigitalservice/internal/model/service"
-	mUser "findigitalservice/internal/model/user"
-	"findigitalservice/internal/util"
 	"fmt"
+	"nub/internal/auth"
+	mDaybook "nub/internal/model/daybook"
+	mDaybookDetail "nub/internal/model/daybook_detail"
+	mForwardAccount "nub/internal/model/forward_account"
+	mRepo "nub/internal/model/repository"
+	mRes "nub/internal/model/response"
+	mService "nub/internal/model/service"
+	mUser "nub/internal/model/user"
+	"nub/internal/util"
 	"sort"
 	"strconv"
 	"strings"
@@ -1723,7 +1723,6 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 						}
 					}
 				}
-				s.logger.Error(fmt.Sprintf("E%d", row))
 				totalForwardingDr := fmt.Sprintf("C%d", row)
 				err = xlsx.SetCellStyle(sheet, totalForwardingDr, totalForwardingDr, priceStyle)
 				if err != nil {
@@ -2357,7 +2356,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 				if err != nil {
 					return nil, err
 				}
-				if groupCode == 4 || groupCode == 9 {
+				if groupCode == 4 || end {
 					// รวมรายได้ || รวมรายจ่าย
 					resultNetProfitLoss = append(resultNetProfitLoss, totalAccountEndingColumn)
 				}

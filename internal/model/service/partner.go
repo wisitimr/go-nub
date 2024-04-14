@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mPartner "findigitalservice/internal/model/partner"
+	mPartner "nub/internal/model/partner"
 )
 
 type PartnerService interface {

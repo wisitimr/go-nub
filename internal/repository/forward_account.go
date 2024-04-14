@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	mCollection "findigitalservice/internal/model/collection"
-	mForwardAccount "findigitalservice/internal/model/forward_account"
-	mRepo "findigitalservice/internal/model/repository"
-	"findigitalservice/internal/util"
+	mCollection "nub/internal/model/collection"
+	mForwardAccount "nub/internal/model/forward_account"
+	mRepo "nub/internal/model/repository"
+	"nub/internal/util"
 	"strconv"
 
 	"github.com/sirupsen/logrus"

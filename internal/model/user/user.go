@@ -10,6 +10,7 @@ type User struct {
 	Id        primitive.ObjectID   `bson:"_id" json:"id"`
 	Username  string               `bson:"username" json:"username"`
 	Password  string               `bson:"password" json:"password"`
+	FullName  string               `bson:"fullName" json:"fullName"`
 	FirstName string               `bson:"firstName" json:"firstName"`
 	LastName  string               `bson:"lastName" json:"lastName"`
 	Email     string               `bson:"email" json:"email"`
@@ -37,14 +38,15 @@ type UserCompany struct {
 }
 
 type UserProfile struct {
-	Id        primitive.ObjectID `bson:"_id" json:"id"`
-	Username  string             `bson:"username" json:"username"`
-	FullName  string             `bson:"fullName" json:"fullName"`
-	FirstName string             `bson:"firstName" json:"firstName"`
-	LastName  string             `bson:"lastName" json:"lastName"`
-	Email     string             `bson:"email" json:"email"`
-	Role      string             `bson:"role" json:"role"`
-	Companies []Company          `bson:"companies" json:"companies"`
+	Id          primitive.ObjectID `bson:"_id" json:"id"`
+	Username    string             `bson:"username" json:"username"`
+	FullName    string             `bson:"fullName" json:"fullName"`
+	FirstName   string             `bson:"firstName" json:"firstName"`
+	LastName    string             `bson:"lastName" json:"lastName"`
+	Email       string             `bson:"email" json:"email"`
+	Role        string             `bson:"role" json:"role"`
+	AccessToken string             `bson:"accessToken" json:"accessToken"`
+	Companies   []Company          `bson:"companies" json:"companies"`
 }
 
 type UpdatedUserProfile struct {

@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"findigitalservice/internal/config"
+	"nub/internal/config"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"

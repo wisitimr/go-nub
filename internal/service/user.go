@@ -3,12 +3,12 @@ package service
 import (
 	"context"
 	"errors"
-	"findigitalservice/internal/auth"
-	mRepo "findigitalservice/internal/model/repository"
-	mRes "findigitalservice/internal/model/response"
-	mService "findigitalservice/internal/model/service"
-	mUser "findigitalservice/internal/model/user"
 	"fmt"
+	"nub/internal/auth"
+	mRepo "nub/internal/model/repository"
+	mRes "nub/internal/model/response"
+	mService "nub/internal/model/service"
+	mUser "nub/internal/model/user"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -41,6 +41,9 @@ func (s userService) FindAll(ctx context.Context, query map[string][]string) ([]
 	res, err := s.userRepo.FindAll(ctx, query)
 	if err != nil {
 		return []mUser.User{}, err
+	}
+	for i, v := range res {
+		res[i].FullName = v.FirstName + " " + v.LastName
 	}
 	return res, nil
 }
@@ -134,20 +137,26 @@ func (s userService) Update(ctx context.Context, id string, payload mUser.User) 
 	return u, nil
 }
 
-func (s userService) Login(ctx context.Context, payload mUser.Login) (mRes.TokenDto, error) {
+func (s userService) Login(ctx context.Context, payload mUser.Login) (mUser.UserProfile, error) {
 	user, err := s.userRepo.FindByUsername(ctx, payload.Username)
 	if err != nil {
 		s.logger.Error(err)
-		return mRes.TokenDto{}, errors.New("incorrect username or password, please try again. ")
+		return mUser.UserProfile{}, errors.New("incorrect username or password, please try again. ")
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
 	if err != nil {
-		return mRes.TokenDto{}, errors.New("incorrect username or password, please try again. ")
+		return mUser.UserProfile{}, errors.New("incorrect username or password, please try again. ")
 	}
 	jwtToken, err := auth.GenerateToken(user)
 	if err != nil {
-		return mRes.TokenDto{}, err
+		return mUser.UserProfile{}, err
 	}
 	s.logger.Info("jwtToken : ", jwtToken)
-	return jwtToken, nil
+	res, err := s.userRepo.FindUserProfile(ctx, user.Id)
+	if err != nil {
+		return mUser.UserProfile{}, err
+	}
+	res.AccessToken = jwtToken
+	res.FullName = res.FirstName + " " + res.LastName
+	return res, nil
 }

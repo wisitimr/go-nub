@@ -6,6 +6,7 @@ type Handler struct {
 	AuthToken      *jwtauth.JWTAuth
 	User           UserHandler
 	Account        AccountHandler
+	AccountType    AccountTypeHandler
 	ForwardAccount ForwardAccountHandler
 	Supplier       SupplierHandler
 	Customer       CustomerHandler

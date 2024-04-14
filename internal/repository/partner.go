@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	mPartner "findigitalservice/internal/model/partner"
-	mRepo "findigitalservice/internal/model/repository"
-	"findigitalservice/internal/util"
+	mPartner "nub/internal/model/partner"
+	mRepo "nub/internal/model/repository"
+	"nub/internal/util"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"

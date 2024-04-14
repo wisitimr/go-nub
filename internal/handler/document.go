@@ -2,11 +2,11 @@ package handler
 
 import (
 	"encoding/json"
-	mDocument "findigitalservice/internal/model/document"
-	mHandler "findigitalservice/internal/model/handler"
-	mRes "findigitalservice/internal/model/response"
-	mService "findigitalservice/internal/model/service"
 	"net/http"
+	mDocument "nub/internal/model/document"
+	mHandler "nub/internal/model/handler"
+	mRes "nub/internal/model/response"
+	mService "nub/internal/model/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"

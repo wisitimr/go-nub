@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mCustomer "findigitalservice/internal/model/customer"
-	mRes "findigitalservice/internal/model/response"
+	mCustomer "nub/internal/model/customer"
+	mRes "nub/internal/model/response"
 )
 
 type CustomerService interface {

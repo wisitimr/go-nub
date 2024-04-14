@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mForwardAccount "findigitalservice/internal/model/forward_account"
+	mForwardAccount "nub/internal/model/forward_account"
 )
 
 type ForwardAccountRepository interface {

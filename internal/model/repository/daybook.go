@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mDaybook "findigitalservice/internal/model/daybook"
+	mDaybook "nub/internal/model/daybook"
 )
 
 type DaybookRepository interface {

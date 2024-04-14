@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
-	"findigitalservice/internal/auth"
-	mRepo "findigitalservice/internal/model/repository"
-	mRole "findigitalservice/internal/model/role"
-	mService "findigitalservice/internal/model/service"
-	mUser "findigitalservice/internal/model/user"
+	"nub/internal/auth"
+	mRepo "nub/internal/model/repository"
+	mRole "nub/internal/model/role"
+	mService "nub/internal/model/service"
+	mUser "nub/internal/model/user"
 	"time"
 
 	"github.com/sirupsen/logrus"

@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mAccount "findigitalservice/internal/model/account"
-	mRes "findigitalservice/internal/model/response"
+	mAccount "nub/internal/model/account"
+	mRes "nub/internal/model/response"
 )
 
 type AccountService interface {

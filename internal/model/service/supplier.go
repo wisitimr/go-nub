@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mRes "findigitalservice/internal/model/response"
-	mSupplier "findigitalservice/internal/model/supplier"
+	mRes "nub/internal/model/response"
+	mSupplier "nub/internal/model/supplier"
 )
 
 type SupplierService interface {

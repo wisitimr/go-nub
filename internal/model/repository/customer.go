@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mCustomer "findigitalservice/internal/model/customer"
+	mCustomer "nub/internal/model/customer"
 )
 
 type CustomerRepository interface {

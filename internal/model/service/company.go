@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mCompany "findigitalservice/internal/model/company"
+	mCompany "nub/internal/model/company"
 )
 
 type CompanyService interface {

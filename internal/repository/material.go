@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	mCollection "findigitalservice/internal/model/collection"
-	mMaterial "findigitalservice/internal/model/material"
-	mRepo "findigitalservice/internal/model/repository"
-	"findigitalservice/internal/util"
+	mCollection "nub/internal/model/collection"
+	mMaterial "nub/internal/model/material"
+	mRepo "nub/internal/model/repository"
+	"nub/internal/util"
 	"sort"
 
 	"github.com/sirupsen/logrus"

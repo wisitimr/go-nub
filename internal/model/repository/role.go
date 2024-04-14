@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mRole "findigitalservice/internal/model/role"
+	mRole "nub/internal/model/role"
 )
 
 type RoleRepository interface {

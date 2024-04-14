@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mSupplier "findigitalservice/internal/model/supplier"
+	mSupplier "nub/internal/model/supplier"
 )
 
 type SupplierRepository interface {

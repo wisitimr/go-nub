@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mMaterial "findigitalservice/internal/model/material"
-	mRes "findigitalservice/internal/model/response"
+	mMaterial "nub/internal/model/material"
+	mRes "nub/internal/model/response"
 )
 
 type MaterialService interface {

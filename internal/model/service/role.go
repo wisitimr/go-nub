@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mRole "findigitalservice/internal/model/role"
+	mRole "nub/internal/model/role"
 )
 
 type RoleService interface {

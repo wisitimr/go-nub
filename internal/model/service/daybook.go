@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mDaybook "findigitalservice/internal/model/daybook"
-	mRes "findigitalservice/internal/model/response"
+	mDaybook "nub/internal/model/daybook"
+	mRes "nub/internal/model/response"
 
 	"github.com/xuri/excelize/v2"
 )

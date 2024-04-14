@@ -3,9 +3,8 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"findigitalservice/internal/model/response"
-	mUser "findigitalservice/internal/model/user"
 	"log"
+	mUser "nub/internal/model/user"
 	"os"
 	"strconv"
 	"time"
@@ -24,7 +23,7 @@ func Hash(pwd []byte) string {
 	return string(hash)
 }
 
-func GenerateToken(user mUser.User) (response.TokenDto, error) {
+func GenerateToken(user mUser.User) (string, error) {
 	// Create token
 	token := jwt.New(jwt.SigningMethodHS256)
 
@@ -45,9 +44,9 @@ func GenerateToken(user mUser.User) (response.TokenDto, error) {
 	// Generate encoded token and send it as response
 	t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		return response.TokenDto{}, err
+		return "", err
 	}
-	return response.TokenDto{Token: t}, nil
+	return t, nil
 }
 
 func UserLogin(ctx context.Context, logger *logrus.Logger) (mUser.User, error) {

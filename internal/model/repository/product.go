@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mProduct "findigitalservice/internal/model/product"
+	mProduct "nub/internal/model/product"
 )
 
 type ProductRepository interface {

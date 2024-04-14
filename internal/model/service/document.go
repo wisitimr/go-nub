@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mDocument "findigitalservice/internal/model/document"
+	mDocument "nub/internal/model/document"
 )
 
 type DocumentService interface {

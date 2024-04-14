@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	mCollection "findigitalservice/internal/model/collection"
-	mDaybookDetail "findigitalservice/internal/model/daybook_detail"
-	mRepo "findigitalservice/internal/model/repository"
-	"findigitalservice/internal/util"
+	mCollection "nub/internal/model/collection"
+	mDaybookDetail "nub/internal/model/daybook_detail"
+	mRepo "nub/internal/model/repository"
+	"nub/internal/util"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"

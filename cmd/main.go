@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	rest "findigitalservice/internal"
-	"findigitalservice/internal/config"
 	"log"
+	rest "nub/internal"
+	"nub/internal/config"
 )
 
 func main() {

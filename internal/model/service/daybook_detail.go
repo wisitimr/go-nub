@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mDaybookDetail "findigitalservice/internal/model/daybook_detail"
+	mDaybookDetail "nub/internal/model/daybook_detail"
 )
 
 type DaybookDetailService interface {

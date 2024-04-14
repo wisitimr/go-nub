@@ -5,6 +5,7 @@ import "go.mongodb.org/mongo-driver/mongo"
 type Collection struct {
 	User           *mongo.Collection
 	Account        *mongo.Collection
+	AccountType    *mongo.Collection
 	ForwardAccount *mongo.Collection
 	Supplier       *mongo.Collection
 	Customer       *mongo.Collection

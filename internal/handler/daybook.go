@@ -2,11 +2,11 @@ package handler
 
 import (
 	"encoding/json"
-	mDaybook "findigitalservice/internal/model/daybook"
-	mHandler "findigitalservice/internal/model/handler"
-	mRes "findigitalservice/internal/model/response"
-	mService "findigitalservice/internal/model/service"
 	"net/http"
+	mDaybook "nub/internal/model/daybook"
+	mHandler "nub/internal/model/handler"
+	mRes "nub/internal/model/response"
+	mService "nub/internal/model/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"

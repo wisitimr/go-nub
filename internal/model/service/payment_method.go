@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	mPaymentMethod "findigitalservice/internal/model/payment_method"
+	mPaymentMethod "nub/internal/model/payment_method"
 )
 
 type PaymentMethodService interface {

@@ -2,11 +2,11 @@ package rest
 
 import (
 	"context"
-	"findigitalservice/internal/config"
-	"findigitalservice/pkg/db"
 	"fmt"
 	"log"
 	"net/http"
+	"nub/internal/config"
+	"nub/pkg/db"
 	"os"
 	"os/signal"
 	"sync"

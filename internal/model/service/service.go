@@ -3,6 +3,7 @@ package service
 type Service struct {
 	User           UserService
 	Account        AccountService
+	AccountType    AccountTypeService
 	ForwardAccount ForwardAccountService
 	Supplier       SupplierService
 	Customer       CustomerService

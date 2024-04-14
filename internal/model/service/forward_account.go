@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	mForwardAccount "findigitalservice/internal/model/forward_account"
-	mRes "findigitalservice/internal/model/response"
+	mForwardAccount "nub/internal/model/forward_account"
+	mRes "nub/internal/model/response"
 )
 
 type ForwardAccountService interface {

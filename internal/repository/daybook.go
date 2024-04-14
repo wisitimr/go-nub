@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	mCollection "findigitalservice/internal/model/collection"
-	mDaybook "findigitalservice/internal/model/daybook"
-	mRepo "findigitalservice/internal/model/repository"
 	"fmt"
+	mCollection "nub/internal/model/collection"
+	mDaybook "nub/internal/model/daybook"
+	mRepo "nub/internal/model/repository"
 	"sort"
 	"strconv"
 	"time"

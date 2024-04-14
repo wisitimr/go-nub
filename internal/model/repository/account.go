@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mAccount "findigitalservice/internal/model/account"
+	mAccount "nub/internal/model/account"
 )
 
 type AccountRepository interface {

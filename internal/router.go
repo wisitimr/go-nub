@@ -1,14 +1,14 @@
 package rest
 
 import (
-	_handler "findigitalservice/internal/handler"
-	mCollection "findigitalservice/internal/model/collection"
-	mHandler "findigitalservice/internal/model/handler"
-	mRepo "findigitalservice/internal/model/repository"
-	mService "findigitalservice/internal/model/service"
-	_repo "findigitalservice/internal/repository"
-	_service "findigitalservice/internal/service"
 	"net/http"
+	_handler "nub/internal/handler"
+	mCollection "nub/internal/model/collection"
+	mHandler "nub/internal/model/handler"
+	mRepo "nub/internal/model/repository"
+	mService "nub/internal/model/service"
+	_repo "nub/internal/repository"
+	_service "nub/internal/service"
 	"os"
 
 	"github.com/go-chi/chi/middleware"
@@ -75,6 +75,14 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 				r.Put("/{id}", h.Account.Update)
 				r.Get("/count", h.Account.Count)
 				r.Delete("/{id}", h.Account.Delete)
+			})
+			r.Route("/accountType", func(r chi.Router) {
+				r.Get("/", h.AccountType.FindAll)
+				r.Get("/{id}", h.AccountType.FindById)
+				r.Post("/", h.AccountType.Create)
+				r.Put("/{id}", h.AccountType.Update)
+				r.Get("/count", h.AccountType.Count)
+				r.Delete("/{id}", h.AccountType.Delete)
 			})
 			r.Route("/forward", func(r chi.Router) {
 				r.Get("/", h.ForwardAccount.FindAll)
@@ -172,6 +180,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) mHandler.Handler {
 	collection := mCollection.Collection{
 		User:           db.Collection("users"),
 		Account:        db.Collection("accounts"),
+		AccountType:    db.Collection("accountTypes"),
 		ForwardAccount: db.Collection("forward_accounts"),
 		Supplier:       db.Collection("suppliers"),
 		Customer:       db.Collection("customers"),
@@ -188,6 +197,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) mHandler.Handler {
 	repo := mRepo.Repository{
 		User:           _repo.InitUserRepository(collection, logger),
 		Account:        _repo.InitAccountRepository(collection, logger),
+		AccountType:    _repo.InitAccountTypeRepository(collection, logger),
 		ForwardAccount: _repo.InitForwardAccountRepository(collection, logger),
 		Supplier:       _repo.InitSupplierRepository(collection, logger),
 		Customer:       _repo.InitCustomerRepository(collection, logger),
@@ -205,6 +215,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) mHandler.Handler {
 	service := mService.Service{
 		User:           _service.InitUserService(repo, logger),
 		Account:        _service.InitAccountService(repo, logger),
+		AccountType:    _service.InitAccountTypeService(repo, logger),
 		ForwardAccount: _service.InitForwardAccountService(repo, logger),
 		Supplier:       _service.InitSupplierService(repo, logger),
 		Customer:       _service.InitCustomerService(repo, logger),
@@ -223,6 +234,7 @@ func initRouter(db *mongo.Database, logger *logrus.Logger) mHandler.Handler {
 		AuthToken:      jwtauth.New("HS256", []byte(os.Getenv("JWT_SECRET")), nil),
 		User:           _handler.InitUserHandler(service, logger),
 		Account:        _handler.InitAccountHandler(service, logger),
+		AccountType:    _handler.InitAccountTypeHandler(service, logger),
 		ForwardAccount: _handler.InitForwardAccountHandler(service, logger),
 		Supplier:       _handler.InitSupplierHandler(service, logger),
 		Customer:       _handler.InitCustomerHandler(service, logger),

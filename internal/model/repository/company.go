@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mCompany "findigitalservice/internal/model/company"
+	mCompany "nub/internal/model/company"
 )
 
 type CompanyRepository interface {

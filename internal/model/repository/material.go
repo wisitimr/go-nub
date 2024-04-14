@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	mMaterial "findigitalservice/internal/model/material"
+	mMaterial "nub/internal/model/material"
 )
 
 type MaterialRepository interface {
