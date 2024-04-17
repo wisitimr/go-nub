@@ -7,7 +7,7 @@ import (
 
 type AccountRepository interface {
 	Count(ctx context.Context) (int64, error)
-	FindAll(ctx context.Context, query map[string][]string) ([]mAccount.Account, error)
+	FindAll(ctx context.Context, query map[string][]string) ([]mAccount.AccountExpandType, error)
 	FindById(ctx context.Context, id string) (mAccount.Account, error)
 	Create(ctx context.Context, payload mAccount.Account) (mAccount.Account, error)
 	Update(ctx context.Context, payload mAccount.Account) (mAccount.Account, error)

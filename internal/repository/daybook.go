@@ -279,6 +279,10 @@ func (r daybookRepository) FindById(ctx context.Context, id string) (mDaybook.Da
 		daybookDetail.Type = row.Type
 		daybookDetail.Amount = row.Amount
 		daybookDetail.Account = row.Account
+		daybookDetail.CreatedBy = row.CreatedBy
+		daybookDetail.CreatedAt = row.CreatedAt
+		daybookDetail.UpdatedBy = row.UpdatedBy
+		daybookDetail.UpdatedAt = row.UpdatedAt
 		daybookDetails = append(daybookDetails, daybookDetail)
 		switch row.Type {
 		case "DR":

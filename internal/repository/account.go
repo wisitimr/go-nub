@@ -33,20 +33,38 @@ func (r accountRepository) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (r accountRepository) FindAll(ctx context.Context, query map[string][]string) ([]mAccount.Account, error) {
-	accounts := []mAccount.Account{}
-	cur, err := r.Collection.Account.Find(ctx, util.QueryHandler(query), options.Find().SetSort(bson.D{{Key: "code", Value: 1}}))
+func (r accountRepository) FindAll(ctx context.Context, query map[string][]string) ([]mAccount.AccountExpandType, error) {
+	accounts := []mAccount.AccountExpandType{}
+	pipeline := []bson.M{
+		{
+			"$match": util.QueryHandler(query),
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "accountTypes",
+				"localField":   "type",
+				"foreignField": "_id",
+				"as":           "type",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$type",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$sort": bson.M{
+				"code": 1,
+			},
+		},
+	}
+	cur, err := r.Collection.Account.Aggregate(ctx, pipeline)
 	if err != nil {
 		return accounts, err
 	}
-	for cur.Next(ctx) {
-		//Create a value into which the single document can be decoded
-		var e mAccount.Account
-		err := cur.Decode(&e)
-		if err != nil {
-			r.logger.Fatal(err)
-		}
-		accounts = append(accounts, e)
+	if err = cur.All(ctx, &accounts); err != nil {
+		return accounts, err
 	}
 	return accounts, nil
 }

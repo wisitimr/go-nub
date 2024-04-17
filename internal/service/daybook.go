@@ -1404,7 +1404,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 		for i := 0; i < len(account); i++ {
 			acc := account[i]
 			if accountType == "" {
-				accountType = acc.Type
+				accountType = acc.Type.Name
 			}
 			isTotal := false
 			accountFirstNo, _ := strconv.Atoi(acc.Code[0:1])
@@ -2120,7 +2120,7 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 					return nil, err
 				}
 				xlsx.SetCellValue(sheet, total, fmt.Sprintf("รวม%s", accountType))
-				accountType = acc.Type
+				accountType = acc.Type.Name
 				err = xlsx.SetCellStyle(sheet, total, fmt.Sprintf("B%d", row), titleStyle)
 				if err != nil {
 					return nil, err

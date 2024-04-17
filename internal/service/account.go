@@ -34,10 +34,10 @@ func (s accountService) Count(ctx context.Context) (mRes.CountDto, error) {
 	return mRes.CountDto{Count: count}, nil
 }
 
-func (s accountService) FindAll(ctx context.Context, query map[string][]string) ([]mAccount.Account, error) {
+func (s accountService) FindAll(ctx context.Context, query map[string][]string) ([]mAccount.AccountExpandType, error) {
 	res, err := s.accountRepo.FindAll(ctx, query)
 	if err != nil {
-		return []mAccount.Account{}, err
+		return []mAccount.AccountExpandType{}, err
 	}
 	return res, nil
 }
