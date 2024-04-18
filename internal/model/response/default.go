@@ -2,10 +2,10 @@ package response
 
 import (
 	"encoding/json"
+	"mime"
 	"net/http"
 	"strings"
 
-	"github.com/xuri/excelize/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -30,13 +30,13 @@ func (s ResponseDto) Respond(w http.ResponseWriter, r *http.Request, data interf
 		res.Message = v.Error()
 		w.WriteHeader(res.StatusCode)
 		json.NewEncoder(w).Encode(res)
-	case *excelize.File:
-		f, _ := data.(*excelize.File)
+	case *ExcelFile:
+		f, _ := data.(*ExcelFile)
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Disposition", "attachment;")
+		w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": f.Name}))
 		w.Header().Set("Content-Transfer-Encoding", "binary")
 		w.Header().Set("Expires", "0")
-		f.Write(w)
+		f.File.Write(w)
 	default:
 		res.StatusCode = http.StatusOK
 		res.Message = "Success"

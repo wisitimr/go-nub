@@ -4,8 +4,6 @@ import (
 	"context"
 	mDaybook "nub/internal/model/daybook"
 	mRes "nub/internal/model/response"
-
-	"github.com/xuri/excelize/v2"
 )
 
 type DaybookService interface {
@@ -14,8 +12,8 @@ type DaybookService interface {
 	FindById(ctx context.Context, id string) (mDaybook.DaybookResponse, error)
 	FindLedgerAccount(ctx context.Context, company string, year string) ([]mDaybook.FinancialStatement, error)
 	FindAccountBalance(ctx context.Context, company string, year string) ([]mDaybook.AccountBalance, error)
-	GenerateExcel(ctx context.Context, id string) (*excelize.File, error)
-	GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error)
+	GenerateExcel(ctx context.Context, id string) (*mRes.ExcelFile, error)
+	GenerateFinancialStatement(ctx context.Context, company string, year string) (*mRes.ExcelFile, error)
 	Create(ctx context.Context, payload mDaybook.DaybookPayload) (mDaybook.DaybookPayload, error)
 	Update(ctx context.Context, id string, payload mDaybook.Daybook) (mDaybook.Daybook, error)
 }

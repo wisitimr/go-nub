@@ -64,7 +64,7 @@ func (s daybookService) FindById(ctx context.Context, id string) (mDaybook.Daybo
 	return res, nil
 }
 
-func (s daybookService) GenerateExcel(ctx context.Context, id string) (*excelize.File, error) {
+func (s daybookService) GenerateExcel(ctx context.Context, id string) (*mRes.ExcelFile, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {
 		user = mUser.User{}
@@ -86,14 +86,18 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (*excelize
 	xlsx.SetCellValue(sheetName, "B2", res.Company.Name)
 	xlsx.SetCellValue(sheetName, "B3", res.Company.Address)
 	xlsx.SetCellValue(sheetName, "A5", res.Document.Name)
+	var text string
 	if res.Supplier != nil {
+		text = res.Supplier.Name
 		xlsx.SetCellValue(sheetName, "A7", res.Supplier.Code)
 		xlsx.SetCellValue(sheetName, "B8", res.Supplier.Name)
 	}
 	if res.Customer != nil {
+		text = res.Customer.Name
 		xlsx.SetCellValue(sheetName, "A7", res.Customer.Code)
 		xlsx.SetCellValue(sheetName, "B8", res.Customer.Name)
 	}
+	fileName := fmt.Sprintf("%s-%s.xlsx", res.Number, text)
 	xlsx.SetCellValue(sheetName, "G6", res.Number)
 	xlsx.SetCellValue(sheetName, "G7", res.TransactionDate.Format("02/01/2006"))
 	xlsx.SetCellValue(sheetName, "G8", res.Invoice)
@@ -804,8 +808,11 @@ func (s daybookService) GenerateExcel(ctx context.Context, id string) (*excelize
 	if err != nil {
 		return nil, err
 	}
+	f := mRes.ExcelFile{}
+	f.File = xlsx
+	f.Name = fileName
 
-	return xlsx, nil
+	return &f, nil
 }
 
 func (s daybookService) Create(ctx context.Context, payload mDaybook.DaybookPayload) (mDaybook.DaybookPayload, error) {
@@ -1204,7 +1211,7 @@ func (s daybookService) FindAccountBalance(ctx context.Context, company string, 
 	}
 	return balances, nil
 }
-func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string, year string) (*excelize.File, error) {
+func (s daybookService) GenerateFinancialStatement(ctx context.Context, company string, year string) (*mRes.ExcelFile, error) {
 	user, err := auth.UserLogin(ctx, s.logger)
 	if err != nil {
 		user = mUser.User{}
@@ -3285,5 +3292,8 @@ func (s daybookService) GenerateFinancialStatement(ctx context.Context, company 
 			row++
 		}
 	}
-	return xlsx, nil
+	f := mRes.ExcelFile{}
+	f.File = xlsx
+	f.Name = fmt.Sprintf("งบการเงินปี%s-%s", year, financial[0].Company.Name)
+	return &f, nil
 }
