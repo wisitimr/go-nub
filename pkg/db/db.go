@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"nub/internal/config"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -10,8 +10,8 @@ import (
 )
 
 // Client instance
-func Connect(ctx context.Context, config config.Database) (*mongo.Database, error) {
-	option := options.Client().ApplyURI(config.URI).SetServerAPIOptions(options.ServerAPI(options.ServerAPIVersion1))
+func Connect(ctx context.Context) (*mongo.Database, error) {
+	option := options.Client().ApplyURI(os.Getenv("DATABASE_URL")).SetServerAPIOptions(options.ServerAPI(options.ServerAPIVersion1))
 
 	option.SetMinPoolSize(10)
 	option.SetMaxPoolSize(100)
@@ -22,5 +22,5 @@ func Connect(ctx context.Context, config config.Database) (*mongo.Database, erro
 	if err != nil {
 		return nil, err
 	}
-	return client.Database(config.Name), err
+	return client.Database(os.Getenv("DATABASE_NAME")), nil
 }

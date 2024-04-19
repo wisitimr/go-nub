@@ -22,15 +22,15 @@ type Server struct {
 	logger *logrus.Logger
 }
 
-func NewServer(ctx context.Context, cfg config.Configuration) (*Server, error) {
-	mongodb, err := db.Connect(ctx, cfg.Database)
+func NewServer(ctx context.Context, cfg config.HTTPServer) (*Server, error) {
+	mongodb, err := db.Connect(ctx)
 	if err != nil {
 		log.Fatalf("Can't establish database connection")
 	}
 	logger := NewLogger()
 	s := Server{
 		logger: logger,
-		cfg:    cfg.HTTPServer,
+		cfg:    cfg,
 		router: Register(mongodb, logger),
 	}
 	return &s, nil

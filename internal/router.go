@@ -44,6 +44,9 @@ func Register(db *mongo.Database, logger *logrus.Logger) *chi.Mux {
 	})
 
 	h := initRouter(db, logger)
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("OK"))
+	})
 	r.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Route("/auth", func(r chi.Router) {

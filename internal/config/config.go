@@ -1,17 +1,12 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 )
-
-type Configuration struct {
-	HTTPServer
-	Database
-}
 
 type HTTPServer struct {
 	IdleTimeout  time.Duration `envconfig:"HTTP_SERVER_IDLE_TIMEOUT" default:"60s"`
@@ -20,17 +15,11 @@ type HTTPServer struct {
 	WriteTimeout time.Duration `envconfig:"HTTP_SERVER_WRITE_TIMEOUT" default:"2s"`
 }
 
-type Database struct {
-	URI        string `envconfig:"DATABASE_URL" required:"true"`
-	Name       string `envconfig:"DATABASE_NAME" default:"nub"`
-	Collection string
-}
-
-func Load() (Configuration, error) {
+func Load() (HTTPServer, error) {
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("load .env error")
+		fmt.Println(err)
 	}
-	var cfg Configuration
+	var cfg HTTPServer
 	if err := envconfig.Process("", &cfg); err != nil {
 		return cfg, err
 	}
